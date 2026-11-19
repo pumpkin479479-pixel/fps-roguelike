@@ -23,3 +23,5 @@ desktop.ini
 *.blend1
 *.blend2
 tools/blender/renders/
+__pycache__/
+*.pyc

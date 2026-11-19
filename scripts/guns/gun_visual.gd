@@ -37,13 +37,14 @@ static func _placeholder(gun: GunType) -> Node3D:
 	_box(root, Vector3(0, body_h * 0.5, -body_len * 0.35), Vector3(0.05, body_h, body_len), body)
 	# グリップ
 	var grip_z := -body_len * 0.1 if pistol else 0.02
-	var grip := _box(root, Vector3(0, -0.05, grip_z), Vector3(0.035, 0.12, 0.05), accent)
+	var grip := _box(root, Vector3(0, -0.055, grip_z), Vector3(0.03, 0.12, 0.045), accent)
 	grip.rotation_degrees.x = -15
 	# 銃身
 	var barrel_z := -body_len * 0.85 - barrel_len * 0.5
 	var r := 0.014 if gun.era < 5 else 0.03
-	var barrel := _cyl(root, Vector3(0, body_h * 0.65, barrel_z), r, r, barrel_len, body)
-	barrel.rotation_degrees.x = 90
+	if barrel_len > 0.0:  # 拳銃は銃身がスライドの中に隠れる
+		var barrel := _cyl(root, Vector3(0, body_h * 0.65, barrel_z), r, r, barrel_len, body)
+		barrel.rotation_degrees.x = 90
 	var tip_z := barrel_z - barrel_len * 0.5
 	if gun.flared_muzzle:
 		var flare := _cyl(root, Vector3(0, body_h * 0.65, tip_z - 0.05), 0.06, r, 0.1, accent)

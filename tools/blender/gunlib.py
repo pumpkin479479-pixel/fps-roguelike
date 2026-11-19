@@ -163,6 +163,8 @@ def export_glb(path):
 
 def render_views(out_dir, prefix, size=(1400, 700)):
     """横・斜め・一人称の3枚を Cycles(CPU)で描く。実銃写真と見比べるための画像。"""
+    # Blender は相対パスを .blend の場所(無ければドライブの先頭)基準で読むので、絶対パスにしておく
+    out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
