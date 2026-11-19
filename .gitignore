@@ -25,3 +25,4 @@ desktop.ini
 tools/blender/renders/
 __pycache__/
 *.pyc
+tools/review/out/

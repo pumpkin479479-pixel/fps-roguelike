@@ -79,7 +79,9 @@ def prism(name, profile, width, mat, x=0.0, bevel=0.0):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     if bevel > 0:
         bmesh.ops.bevel(bm, geom=list(bm.edges), offset=bevel, segments=1, affect="EDGES")
-    return _new_object(name, bm, mat)
+    obj = _new_object(name, bm, mat)
+    smooth(obj)
+    return obj
 
 
 def box(name, center, size, mat, bevel=0.0):
@@ -101,7 +103,9 @@ def tube_y(name, y0, y1, radius, mat, x=0.0, z=0.0, segments=10, radius1=None):
     for v in bm.verts:
         cx, cy, cz = v.co
         v.co = Vector((cx + x, cz + (y0 + y1) / 2, cy + z))
-    return _new_object(name, bm, mat)
+    obj = _new_object(name, bm, mat)
+    smooth(obj, 50.0)
+    return obj
 
 
 def tube_x(name, center, length, radius, mat, segments=8):
@@ -112,6 +116,121 @@ def tube_x(name, center, length, radius, mat, segments=8):
         cx, cy, cz = v.co
         v.co = Vector((cz + center[0], cy + center[1], cx + center[2]))
     return _new_object(name, bm, mat)
+
+
+# ---------------- 断面をつないで作る形(ロフト) ----------------
+# 真横から押し出しただけの形は、上や斜めから見ると薄い板に見える。
+# 本体・ハンドガード・ストック・グリップ・マガジンは、角を丸めた断面を並べてつなぐ。
+
+def rounded_rect(w, h, r, seg=2):
+    """幅 w・高さ h・角の半径 r の角丸長方形(中心原点、反時計回り)。seg は角1つの分割数。"""
+    r = max(0.0, min(r, w / 2 - 1e-5, h / 2 - 1e-5))
+    pts = []
+    corners = [(w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180), (w / 2 - r, -h / 2 + r, 270)]
+    for cx, cy, a0 in corners:
+        for k in range(seg + 1):
+            a = math.radians(a0 + 90 * k / seg)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
+
+
+def arch(w, h_side, h_top, seg=6):
+    """下が平らで上が丸い断面(ダストカバー、上部ハンドガード用)。中心は底辺の中央。"""
+    pts = [(w / 2, 0.0), (w / 2, h_side)]
+    for k in range(1, seg):
+        a = math.pi * k / seg
+        pts.append((w / 2 * math.cos(a), h_side + h_top * math.sin(a)))
+    pts += [(-w / 2, h_side), (-w / 2, 0.0)]
+    return pts
+
+
+def ring(center, u, v, pts2d):
+    """2D の断面 pts2d を、中心 center・横軸 u・縦軸 v の面に置いた 3D の点列にする。"""
+    c, u, v = Vector(center), Vector(u).normalized(), Vector(v).normalized()
+    return [c + u * x + v * y for (x, y) in pts2d]
+
+
+def ring_y(y, z, pts2d, x=0.0):
+    """Y(銃口方向)に垂直な断面。2D の (横, 縦) = (X, Z)。"""
+    return ring((x, y, z), (1, 0, 0), (0, 0, 1), pts2d)
+
+
+def loft(name, rings, mat, cap=True, smooth_angle=40.0):
+    """同じ点数の断面を順につないだ筒。両端はふたをする。角度の大きい辺は角として残す。"""
+    bm = bmesh.new()
+    vs = [[bm.verts.new(p) for p in r] for r in rings]
+    n = len(rings[0])
+    for a, b in zip(vs[:-1], vs[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((a[i], a[j], b[j], b[i]))
+    if cap:
+        bm.faces.new(list(reversed(vs[0])))
+        bm.faces.new(vs[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    obj = _new_object(name, bm, mat)
+    smooth(obj, smooth_angle)
+    return obj
+
+
+def smooth(obj, angle=40.0):
+    """なめらかに見せつつ、angle 度より鋭い辺は角のまま残す(glTF にもそのまま出る)。"""
+    obj.data.shade_smooth()
+    obj.data.set_sharp_from_angle(angle=math.radians(angle))
+
+
+def sweep_yz(name, path, profile2d, mat, smooth_angle=50.0):
+    """YZ 平面上の折れ線 path に沿って断面 profile2d(横=X, 縦=進行方向に垂直)を流す。"""
+    pts = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(pts):
+        a = pts[max(i - 1, 0)]
+        b = pts[min(i + 1, len(pts) - 1)]
+        t = (b - a).normalized()
+        n = Vector((0, -t.z, t.y))
+        rings.append(ring(p, (1, 0, 0), n, profile2d))
+    return loft(name, rings, mat, smooth_angle=smooth_angle)
+
+
+def _apply_modifier(obj, mod):
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+
+
+def bevel(obj, width, segments=2, angle=35.0):
+    """角を面取りして光を拾わせる(実物の金属部品は角が少し丸い)。"""
+    m = obj.modifiers.new("bevel", "BEVEL")
+    m.width = width
+    m.segments = segments
+    m.limit_method = "ANGLE"
+    m.angle_limit = math.radians(angle)
+    m.harden_normals = False
+    _apply_modifier(obj, m)
+    smooth(obj, 35.0)
+    return obj
+
+
+def subdivide(obj, levels=1):
+    """木部や樹脂の丸みを出す。"""
+    m = obj.modifiers.new("subd", "SUBSURF")
+    m.levels = levels
+    m.render_levels = levels
+    _apply_modifier(obj, m)
+    smooth(obj, 70.0)
+    return obj
+
+
+def cut(obj, cutter):
+    """obj から cutter の形をくり抜く(排莢口、照門の切り欠きなど)。cutter は削除する。"""
+    m = obj.modifiers.new("cut", "BOOLEAN")
+    m.operation = "DIFFERENCE"
+    m.solver = "EXACT"
+    m.object = cutter
+    _apply_modifier(obj, m)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    return obj
 
 
 def join(name, objs):
@@ -161,18 +280,17 @@ def export_glb(path):
                               export_apply=True, export_extras=False)
 
 
-def render_views(out_dir, prefix, size=(1400, 700)):
-    """横・斜め・一人称の3枚を Cycles(CPU)で描く。実銃写真と見比べるための画像。"""
-    # Blender は相対パスを .blend の場所(無ければドライブの先頭)基準で読むので、絶対パスにしておく
+def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675)):
+    """確認用の画像を Cycles(CPU)で描く。真横だけでなく、上・前後の斜め・一人称・構えた視点も出す。
+    最後に全部を1枚に並べた {prefix}_sheet.png も作る(Pillow があれば)。"""
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 24
+    scene.cycles.samples = 32
     scene.cycles.use_denoising = False
     scene.render.resolution_x, scene.render.resolution_y = size
-    scene.render.film_transparent = False
     world = bpy.data.worlds.new("w")
     world.use_nodes = True
     world.node_tree.nodes["Background"].inputs[0].default_value = (0.75, 0.77, 0.8, 1)
@@ -188,43 +306,86 @@ def render_views(out_dir, prefix, size=(1400, 700)):
 
     add_light("key", (50, 0, 140), 3.0)
     add_light("rim", (-60, 0, -30), 1.5)
+    add_light("top", (0, 0, 0), 1.0)
 
     cam_data = bpy.data.cameras.new("cam")
     cam = bpy.data.objects.new("cam", cam_data)
     bpy.context.collection.objects.link(cam)
     scene.camera = cam
 
-    # バウンディングボックスから中心と大きさを求める
     pts = []
     for o in bpy.data.objects:
         if o.type == "MESH":
             pts += [o.matrix_world @ Vector(c) for c in o.bound_box]
     mn = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
     mx = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
-    center = (mn + mx) / 2
-    length = mx.y - mn.y
+    c = (mn + mx) / 2
+    L = mx.y - mn.y
 
     views = {
-        # 右側面(正投影)
-        "side": dict(ortho=length * 1.1, loc=center + Vector((1.0, 0, 0)), look=center),
-        # 左斜め前上
-        "three_quarter": dict(fov=30, loc=center + Vector((-1.2, 1.0, 0.6)) * length, look=center),
-        # 一人称(ゲーム中の見え方に近い)
-        "first_person": dict(fov=70, loc=Vector((-0.2, -0.38, 0.17)), look=Vector((-0.12, 0.6, 0.06))),
+        "side_right": dict(ortho=L * 1.08, loc=c + Vector((1, 0, 0)), look=c),
+        "side_left": dict(ortho=L * 1.08, loc=c + Vector((-1, 0, 0)), look=c),
+        "top": dict(ortho=L * 1.08, loc=c + Vector((0, 0, 1)), look=c, up=Vector((0, 1, 0))),
+        "front_quarter": dict(fov=30, loc=c + Vector((-1.0, 1.3, 0.55)) * L, look=c),
+        "rear_quarter": dict(fov=30, loc=c + Vector((-0.9, -1.3, 0.7)) * L, look=c),
+        # ゲームの腰だめ表示と同じ位置関係(Godot の HIP_POS)と縦の視野角 85 度
+        "first_person": dict(fov=85, vfov=True, loc=Vector((-0.20, -0.50, 0.20)), look=Vector((-0.20, 1.0, 0.20))),
     }
+    if ads_eye is not None and front_post is not None:
+        line = (front_post - ads_eye).normalized()
+        views["aim"] = dict(fov=22, vfov=True, loc=ads_eye - line * 0.12, look=front_post)
+    files = []
     for vname, v in views.items():
         if "ortho" in v:
             cam_data.type = "ORTHO"
             cam_data.ortho_scale = v["ortho"]
         else:
             cam_data.type = "PERSP"
-            cam_data.angle = math.radians(v["fov"])
-        cam_data.clip_start = 0.01
+            if v.get("vfov"):
+                cam_data.sensor_fit = "VERTICAL"
+                cam_data.angle_y = math.radians(v["fov"])
+            else:
+                cam_data.sensor_fit = "AUTO"
+                cam_data.angle = math.radians(v["fov"])
+        cam_data.clip_start = 0.005
         cam.location = v["loc"]
         direction = v["look"] - v["loc"]
-        cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-        scene.render.filepath = os.path.join(out_dir, f"{prefix}_{vname}.png")
+        if "up" in v:
+            # 真上から見下ろし、画面の右を銃口(+Y)にする
+            cam.rotation_euler = (0.0, 0.0, math.pi / 2)
+        else:
+            cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+        path = os.path.join(out_dir, f"{prefix}_{vname}.png")
+        scene.render.filepath = path
         bpy.ops.render.render(write_still=True)
+        files.append((vname, path))
+    _contact_sheet(files, os.path.join(out_dir, f"{prefix}_sheet.png"))
+    return files
+
+
+def _contact_sheet(files, out_path):
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("[gunlib] Pillow が無いので一覧画像は作らない")
+        return
+    imgs = [(n, Image.open(p).convert("RGB")) for n, p in files]
+    w, h = imgs[0][1].size
+    tw, th = w // 2, h // 2
+    cols = 2
+    rows = (len(imgs) + cols - 1) // cols
+    sheet = Image.new("RGB", (tw * cols, th * rows), (40, 40, 44))
+    d = ImageDraw.Draw(sheet)
+    try:
+        from PIL import ImageFont
+        font = ImageFont.load_default(size=28)
+    except Exception:
+        font = None
+    for i, (n, im) in enumerate(imgs):
+        x, y = (i % cols) * tw, (i // cols) * th
+        sheet.paste(im.resize((tw, th)), (x, y))
+        d.text((x + 10, y + 8), n, fill=(0, 0, 0), font=font)
+    sheet.save(out_path)
 
 
 def cli_args():

@@ -53,7 +53,7 @@ func _ready() -> void:
 
 
 ## 開発用: `-- --screenshot=out.png --shot-frames=120` で、指定フレーム後に画面を保存して終了する。
-## AI が見た目を確認するために使う。--fire を付けると射撃ボタンを押しっぱなしにする。
+## AI が見た目を確認するために使う。--fire で射撃、--aim で構えを押しっぱなしにする。
 func _setup_screenshot() -> void:
 	var path := ""
 	var frames := 120
@@ -64,6 +64,8 @@ func _setup_screenshot() -> void:
 			frames = int(a.trim_prefix("--shot-frames="))
 		elif a == "--fire":
 			Input.action_press.call_deferred("fire")
+		elif a == "--aim":
+			Input.action_press.call_deferred("aim")
 	if path == "":
 		return
 	for _k in frames:

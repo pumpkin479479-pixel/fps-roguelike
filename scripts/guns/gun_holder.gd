@@ -6,9 +6,11 @@ extends Node3D
 signal gun_changed
 
 const MAX_SLOTS := 2
-const HIP_POS := Vector3(0.2, -0.2, -0.5)
+const HIP_POS := Vector3(0.17, -0.19, -0.46)
 const ADS_POS := Vector3(0.0, -0.13, -0.42)
 const BASE_SWAP_TIME := 0.3
+## 構えたときの目からリアサイトまでの距離
+const ADS_EYE_DIST := 0.16
 
 var slots: Array[GunInstance] = []
 var current := 0
@@ -22,6 +24,7 @@ var _cooldown := 0.0
 var _semi_ready := true
 var _view: Node3D
 var _muzzle: Node3D
+var _ads_pos := ADS_POS
 var _flash: OmniLight3D
 var _kick := 0.0
 var _bm: BulletManager
@@ -39,6 +42,14 @@ func _ready() -> void:
 	_flash.light_energy = 0.0
 	_flash.shadow_enabled = false
 	add_child(_flash)
+	# 銃だけを照らす弱い補助光(部屋の暗い所でも銃の形が見えるように)
+	var fill := OmniLight3D.new()
+	fill.light_color = Color(1.0, 0.97, 0.92)
+	fill.light_energy = 0.5
+	fill.omni_range = 1.2
+	fill.position = Vector3(-0.15, 0.25, 0.1)
+	fill.shadow_enabled = false
+	get_parent().add_child.call_deferred(fill)
 	position = HIP_POS
 
 
@@ -77,6 +88,12 @@ func _equip() -> void:
 	_view = GunVisual.build(g.type)
 	add_child(_view)
 	_muzzle = GunVisual.find_muzzle(_view)
+	# モデルに照準点(ads_eye)があれば、構えたときに照準線が画面中央に来るよう位置を決める
+	var eye := _view.find_child("ads_eye", true, false) as Node3D
+	if eye:
+		_ads_pos = Vector3(0, 0, -ADS_EYE_DIST) - (_view.global_transform.affine_inverse() * eye.global_transform).origin
+	else:
+		_ads_pos = ADS_POS
 	# 重い銃ほど持ち替えが遅い
 	swap_left = BASE_SWAP_TIME / GunInstance.speed_multiplier(g.weight)
 	if _player:
@@ -139,7 +156,7 @@ func _process(dt: float) -> void:
 	_cooldown = maxf(_cooldown, -0.05)
 
 	# 見た目: 構え位置、反動、持ち替えの下げ
-	var target := ADS_POS if aiming else HIP_POS
+	var target := _ads_pos if aiming else HIP_POS
 	target.y -= swap_left * 1.2
 	if reloading:
 		target.y -= 0.12
