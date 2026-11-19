@@ -191,7 +191,7 @@ g.bevel(muzzle_nut, 0.0008, 2)
 g.cut(muzzle_nut, g.tube_y("c", 0.510, 0.53, 0.0043, "recess", z=BARREL_Z, segments=16))
 bore = g.tube_y("bore_dark", 0.508, 0.5105, 0.0044, "recess", z=BARREL_Z, segments=16)
 # フロントサイト: 銃身を抱く台、左右の耳、中央の柱
-fs_base = g.loft("fs_base", [sec(0.462, 0.010, 2 * (EAR_X + EAR_HALF_T) + 0.002, 0.034, 0.009), sec(0.496, 0.010, 2 * (EAR_X + EAR_HALF_T) + 0.002, 0.034, 0.009)], "steel")
+fs_base = g.loft("fs_base", [sec(0.462, 0.010, 2 * (EAR_X + EAR_HALF_T * 1.7) + 0.002, 0.034, 0.009), sec(0.496, 0.010, 2 * (EAR_X + EAR_HALF_T * 1.7) + 0.002, 0.034, 0.009)], "steel")
 fs_tower = g.prism("fs_tower", [(0.468, 0.020), (0.471, POST_TIP - 0.022), (0.487, POST_TIP - 0.022), (0.490, 0.020)], 0.008, "steel", bevel=0.001)
 def ear_section(side, top):
     """照星の耳の断面(正面から見た形): 馬蹄形。台から立ち上がり、柱を大きく囲んで、上端だけ内側へ曲がる。
@@ -200,7 +200,8 @@ def ear_section(side, top):
     for k in range(9):
         t = k / 8
         z = 0.024 + (top - 0.024) * t
-        x = EAR_X - EAR_HALF_T * 1.5 * max(0.0, t - 0.75) / 0.25
+        # 上端の内側への返しは控えめにし、そのぶん全体を外へ出して、柱の左右の空きを狙いどおりに保つ
+        x = EAR_X + EAR_HALF_T * 0.7 - EAR_HALF_T * 0.7 * max(0.0, t - 0.75) / 0.25
         outer.append((side * (x + EAR_HALF_T), z))
         inner.append((side * (x - EAR_HALF_T), z))
     pts = outer + list(reversed(inner))
@@ -208,8 +209,8 @@ def ear_section(side, top):
 
 
 # 耳は前縁が斜め(前が低い)
-ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, POST_TIP + 0.009)),
-                               g.ring_y(0.487, 0.0, ear_section(s, POST_TIP + 0.009))], "steel", smooth_angle=40)
+ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, POST_TIP + 0.006)),
+                               g.ring_y(0.487, 0.0, ear_section(s, POST_TIP + 0.006))], "steel", smooth_angle=40)
         for s in (-1, 1)]
 fs_post = g.tube_y("fs_post_tmp", 0, 0.024, POST_R, "steel_worn", segments=16)
 fs_post.data.transform(Matrix.Translation((0, 0.479, POST_TIP - 0.012)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))

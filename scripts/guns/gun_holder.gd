@@ -310,9 +310,9 @@ class Casing extends MeshInstance3D:
 	static func spawn(parent: Node, at: Transform3D, base_vel: Vector3, rng: RandomNumberGenerator) -> void:
 		if _mesh == null:
 			_mesh = CylinderMesh.new()
-			_mesh.top_radius = 0.0042
-			_mesh.bottom_radius = 0.0058
-			_mesh.height = 0.040
+			_mesh.top_radius = 0.0034
+			_mesh.bottom_radius = 0.0046
+			_mesh.height = 0.032
 			_mesh.radial_segments = 8
 			_mesh.rings = 1
 			var m := StandardMaterial3D.new()
