@@ -49,3 +49,5 @@ enum FireMode { AUTO, SEMI, CHARGE }
 @export var flared_muzzle := false
 ## マガジンの形 0=箱 1=ドラム 2=なし(チューブ/単発) 3=エネルギーセル
 @export var mag_shape := 0
+## 構えたときの目から照門までの距離(m)。照門が銃の後ろ寄りなら短く、前寄り(AK など)なら長く
+@export var ads_eye_dist := 0.2

@@ -280,7 +280,7 @@ def export_glb(path):
                               export_apply=True, export_extras=False)
 
 
-def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675)):
+def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675), eye_dist=0.12):
     """確認用の画像を Cycles(CPU)で描く。真横だけでなく、上・前後の斜め・一人称・構えた視点も出す。
     最後に全部を1枚に並べた {prefix}_sheet.png も作る(Pillow があれば)。"""
     out_dir = os.path.abspath(out_dir)
@@ -332,7 +332,7 @@ def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675
     }
     if ads_eye is not None and front_post is not None:
         line = (front_post - ads_eye).normalized()
-        views["aim"] = dict(fov=22, vfov=True, loc=ads_eye - line * 0.12, look=front_post)
+        views["aim"] = dict(fov=30, vfov=True, loc=ads_eye - line * eye_dist, look=front_post)
     files = []
     for vname, v in views.items():
         if "ortho" in v:

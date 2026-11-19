@@ -6,11 +6,11 @@ extends Node3D
 signal gun_changed
 
 const MAX_SLOTS := 2
-const HIP_POS := Vector3(0.17, -0.19, -0.46)
+const HIP_POS := Vector3(0.15, -0.20, -0.50)
+## 腰だめの向き(ラジアン): 銃口を少し内側・上へ向け、ストックは右下の画面外へ逃がす
+const HIP_ROT := Vector3(0.05, 0.07, 0.03)
 const ADS_POS := Vector3(0.0, -0.13, -0.42)
 const BASE_SWAP_TIME := 0.3
-## 構えたときの目からリアサイトまでの距離
-const ADS_EYE_DIST := 0.16
 
 var slots: Array[GunInstance] = []
 var current := 0
@@ -101,7 +101,7 @@ func _equip() -> void:
 		if post:
 			var d := (inv * post.global_transform).origin - eye_l
 			_ads_pitch = -atan2(d.y, -d.z)
-		_ads_pos = Vector3(0, 0, -ADS_EYE_DIST) - Basis(Vector3.RIGHT, _ads_pitch) * eye_l
+		_ads_pos = Vector3(0, 0, -g.type.ads_eye_dist) - Basis(Vector3.RIGHT, _ads_pitch) * eye_l
 	else:
 		_ads_pos = ADS_POS
 	# 重い銃ほど持ち替えが遅い
@@ -173,9 +173,12 @@ func _process(dt: float) -> void:
 	position = position.lerp(target, clampf(dt * 16.0, 0, 1))
 	_kick = lerpf(_kick, 0.0, clampf(dt * 14.0, 0, 1))
 	if _view:
-		_view.position = Vector3(0, 0, _kick * 0.08)
 		_aim_t = move_toward(_aim_t, 1.0 if aiming else 0.0, dt * 8.0)
-		_view.rotation = Vector3(_kick * 0.25 + (0.6 if reloading else 0.0) + _ads_pitch * _aim_t, 0, (0.5 if reloading else 0.0))
+		# 構えている間は跳ねを小さくして、撃っている最中も照準器がずれすぎないように
+		var kick := _kick * lerpf(1.0, 0.3, _aim_t)
+		_view.position = Vector3(0, 0, kick * 0.08)
+		rotation = HIP_ROT * (1.0 - _aim_t)
+		_view.rotation = Vector3(kick * 0.25 + (0.6 if reloading else 0.0) + _ads_pitch * _aim_t, 0, (0.5 if reloading else 0.0))
 		if g.type.fire_mode == GunType.FireMode.CHARGE:
 			_view.position.x = _rng.randf_range(-1, 1) * 0.004 * charge
 	_flash.light_energy = maxf(0.0, _flash.light_energy - dt * 60.0)
