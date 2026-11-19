@@ -1,0 +1,24 @@
+# Godot 4
+.godot/
+/android/
+*.import.tmp
+export_presets.cfg
+export_credentials.cfg
+*.translation
+
+# Mono / C#
+.mono/
+data_*/
+mono_crash.*.json
+
+# Build output
+/build/
+/export/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.blend1
+*.blend2
