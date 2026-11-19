@@ -18,7 +18,7 @@ import sys
 
 import bpy  # bmesh より先に読み込む(bpy モジュール版では必須)
 import bmesh
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 # 共通パレット: 名前 → (色, 金属感, 粗さ)
 PALETTE = {
@@ -28,6 +28,10 @@ PALETTE = {
     "wood_dark": ((0.14, 0.05, 0.018), 0.0, 0.6),
     "bakelite": ((0.13, 0.035, 0.018), 0.0, 0.45),    # 樹脂(オレンジがかった茶)
     "brass": ((0.55, 0.38, 0.12), 0.95, 0.3),
+    "copper": ((0.55, 0.25, 0.12), 0.9, 0.35),       # 弾頭
+    "primer": ((0.6, 0.6, 0.6), 0.9, 0.3),           # 雷管
+    "steel_bright": ((0.12, 0.12, 0.13), 0.65, 0.40),
+    "recess": ((0.010, 0.010, 0.012), 0.5, 0.7),     # 穴の奥(暗く)
     "glow": ((0.2, 0.8, 1.0), 0.0, 0.3),
 }
 
@@ -268,6 +272,24 @@ def empty(name, loc, parent=None):
     return e
 
 
+def set_pivot(obj, pivot):
+    """部品の原点(回る軸・滑る基準)を pivot に移す。見た目の位置は変わらない。Godot ではこの点を中心に動く。"""
+    pivot = Vector(pivot)
+    obj.data.transform(Matrix.Translation(-pivot))
+    obj.location = pivot
+    return obj
+
+
+def attach(child, parent):
+    """child を parent の子にする(見た目の位置はそのまま)。親が動くと一緒に動く。"""
+    bpy.context.view_layer.update()
+    mw = child.matrix_world.copy()
+    child.parent = parent
+    child.matrix_parent_inverse = Matrix.Identity(4)
+    child.matrix_world = mw
+    return child
+
+
 def make_root(name, parts, points):
     """parts: 部品オブジェクトのリスト / points: {名前: 位置}。全部を root の子にする。"""
     root = empty(name, (0, 0, 0))
@@ -297,6 +319,10 @@ def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675
     最後に全部を1枚に並べた {prefix}_sheet.png も作る(Pillow があれば)。"""
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
+    # 2回目以降の呼び出し(姿勢を変えて撮り直す時)は、前回のライトとカメラを消してから置き直す
+    for o in list(bpy.data.objects):
+        if o.name.split(".")[0] in ("key", "rim", "top", "cam"):
+            bpy.data.objects.remove(o, do_unlink=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
@@ -333,10 +359,12 @@ def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675
     mx = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
     c = (mn + mx) / 2
     L = mx.y - mn.y
+    H = (mx.z - mn.z) * size[0] / size[1]  # 横から撮るとき、高さがはみ出さない幅
+    W = max(L, H)
 
     views = {
-        "side_right": dict(ortho=L * 1.08, loc=c + Vector((1, 0, 0)), look=c),
-        "side_left": dict(ortho=L * 1.08, loc=c + Vector((-1, 0, 0)), look=c),
+        "side_right": dict(ortho=W * 1.08, loc=c + Vector((1, 0, 0)), look=c),
+        "side_left": dict(ortho=W * 1.08, loc=c + Vector((-1, 0, 0)), look=c),
         "top": dict(ortho=L * 1.08, loc=c + Vector((0, 0, 1)), look=c, up=Vector((0, 1, 0))),
         "front_quarter": dict(fov=30, loc=c + Vector((-1.0, 1.3, 0.55)) * L, look=c),
         "rear_quarter": dict(fov=30, loc=c + Vector((-0.9, -1.3, 0.7)) * L, look=c),

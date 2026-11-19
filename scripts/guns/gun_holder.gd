@@ -36,6 +36,8 @@ var _bolt_rest := Vector3.ZERO
 var _bolt_t := 1.0
 var _eject: Node3D
 const BOLT_TRAVEL := 0.055
+## リボルバーの撃鉄・シリンダー・振り出しリロード(モデルに "cylinder" がある銃だけ)
+var _rig: RevolverRig
 var _bm: BulletManager
 var _player: Player
 var _rng := RandomNumberGenerator.new()
@@ -101,6 +103,9 @@ func _equip() -> void:
 	_bolt_rest = _bolt.position if _bolt else Vector3.ZERO
 	_bolt_t = 1.0
 	_eject = _view.find_child("ejection_port", true, false) as Node3D
+	_rig = RevolverRig.attach(_view)
+	if _rig:
+		_rig.set_loaded(g.ammo)
 	# モデルに照準点(ads_eye)があれば、構えたときに照準線が画面中央に来るよう位置を決める
 	var eye := _view.find_child("ads_eye", true, false) as Node3D
 	var post := _view.find_child("front_post_tip", true, false) as Node3D
@@ -144,6 +149,8 @@ func _process(dt: float) -> void:
 		if reload_left <= 0.0:
 			reloading = false
 			g.ammo = g.magazine
+			if _rig:
+				_rig.finish_reload(g.ammo)
 	elif Input.is_action_just_pressed("reload") and g.ammo < g.magazine:
 		_start_reload(g)
 
@@ -176,9 +183,14 @@ func _process(dt: float) -> void:
 	_cooldown = maxf(_cooldown, -0.05)
 
 	# 見た目: 構え位置、反動、持ち替えの下げ
-	var target := _ads_pos if aiming else HIP_POS
+	var target := _ads_pos if aiming else g.type.hip_pos
 	target.y -= swap_left * 1.2
-	if reloading:
+	var reload_rot := Vector3(0.6, 0, 0.5)
+	if reloading and _rig:
+		var pose := _rig.reload_pose()
+		reload_rot = pose[0]
+		target += pose[1]
+	elif reloading:
 		target.y -= 0.12
 	position = position.lerp(target, clampf(dt * 16.0, 0, 1))
 	_kick = lerpf(_kick, 0.0, clampf(dt * 14.0, 0, 1))
@@ -188,8 +200,11 @@ func _process(dt: float) -> void:
 		var kick := _kick * lerpf(1.0, 0.3, _aim_t)
 		_view.position = Vector3(0, 0, kick * 0.08)
 		rotation = HIP_ROT * (1.0 - _aim_t)
-		_view.rotation = Vector3(kick * 0.25 + (0.6 if reloading else 0.0) + _ads_pitch * _aim_t, 0, (0.5 if reloading else 0.0))
+		_view.rotation = Vector3(kick * 0.25 + (reload_rot.x if reloading else 0.0) + _ads_pitch * _aim_t,
+			reload_rot.y if reloading else 0.0, reload_rot.z if reloading else 0.0)
 		_update_bolt(dt, g)
+		if _rig:
+			_rig.update(dt, get_tree().current_scene, _player.velocity if _player else Vector3.ZERO, _rng)
 		if g.type.fire_mode == GunType.FireMode.CHARGE:
 			_view.position.x = _rng.randf_range(-1, 1) * 0.004 * charge
 	_flash.light_energy = maxf(0.0, _flash.light_energy - dt * 60.0)
@@ -199,6 +214,8 @@ func _start_reload(g: GunInstance) -> void:
 	reloading = true
 	reload_left = g.reload_time
 	charge = 0.0
+	if _rig:
+		_rig.start_reload(g.reload_time)
 
 
 func _fire(g: GunInstance) -> void:
@@ -229,6 +246,8 @@ func _fire(g: GunInstance) -> void:
 
 	_kick = minf(_kick + 0.4 + g.recoil * 0.15, 1.5)
 	_bolt_t = 0.0
+	if _rig:
+		_rig.on_fire(g.rpm)
 	if _eject:
 		Casing.spawn(get_tree().current_scene, _eject.global_transform, _player.velocity if _player else Vector3.ZERO, _rng)
 	_flash.global_position = muzzle
@@ -308,6 +327,21 @@ class Casing extends MeshInstance3D:
 	var life := 1.2
 
 	static func spawn(parent: Node, at: Transform3D, base_vel: Vector3, rng: RandomNumberGenerator) -> void:
+		var b := at.basis.orthonormalized()
+		# 銃の右(+X)・少し上・少し後ろへ。筒の向きは銃の左右
+		var vel := base_vel + b.x * rng.randf_range(2.2, 3.0) + b.y * rng.randf_range(1.0, 1.8) + b.z * rng.randf_range(0.2, 0.7)
+		_make(parent, Transform3D(b * Basis(Vector3.FORWARD, PI * 0.5), at.origin), vel, rng)
+
+	## リボルバーの排莢: 振り出したシリンダーから、押し出された薬莢が後ろ下へこぼれ落ちる。
+	## at は薬莢(round_k)の位置と向き。full は撃っていない弾(今は見た目を分けない)
+	static func spawn_dropped(parent: Node, at: Transform3D, base_vel: Vector3, rng: RandomNumberGenerator, _full := false) -> void:
+		var b := at.basis.orthonormalized()
+		var vel := base_vel + b.z * rng.randf_range(0.4, 0.9) + Vector3(rng.randf_range(-0.3, 0.3), -rng.randf_range(0.3, 0.8), 0)
+		# 薬莢の後端(round_k の原点)から前へ半分ずらした所が中心。筒の向きは銃の前後
+		var center := at.origin - b.z * 0.016
+		_make(parent, Transform3D(b * Basis(Vector3.RIGHT, PI * 0.5), center), vel, rng)
+
+	static func _make(parent: Node, xf: Transform3D, vel: Vector3, rng: RandomNumberGenerator) -> void:
 		if _mesh == null:
 			_mesh = CylinderMesh.new()
 			_mesh.top_radius = 0.0034
@@ -328,10 +362,8 @@ class Casing extends MeshInstance3D:
 		c.mesh = _mesh
 		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(c)
-		var b := at.basis.orthonormalized()
-		# 銃の右(+X)・少し上・少し後ろへ
-		c.global_transform = Transform3D(b * Basis(Vector3.FORWARD, PI * 0.5), at.origin)
-		c.vel = base_vel + b.x * rng.randf_range(2.2, 3.0) + b.y * rng.randf_range(1.0, 1.8) + b.z * rng.randf_range(0.2, 0.7)
+		c.global_transform = xf
+		c.vel = vel
 		c.spin = Vector3(rng.randf_range(-20, 20), rng.randf_range(-30, 30), rng.randf_range(-20, 20))
 		_live.append(c)
 

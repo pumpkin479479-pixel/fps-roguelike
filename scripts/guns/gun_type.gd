@@ -18,6 +18,8 @@ enum FireMode { AUTO, SEMI, CHARGE }
 ## 毎分の発射数
 @export var rpm := 600.0
 @export var magazine := 30
+## true なら装弾数をばらつかせない(リボルバーのシリンダーの穴の数など、形で決まるもの)
+@export var fixed_magazine := false
 @export var reload_time := 2.0
 ## 1回の発射で出る弾の数(散弾など)
 @export var pellets := 1
@@ -51,3 +53,5 @@ enum FireMode { AUTO, SEMI, CHARGE }
 @export var mag_shape := 0
 ## 構えたときの目から照門までの距離(m)。照門が銃の後ろ寄りなら短く、前寄り(AK など)なら長く
 @export var ads_eye_dist := 0.2
+## 腰だめで持つ位置(カメラから見て右・下・前)。拳銃のように小さい銃は近く高めに
+@export var hip_pos := Vector3(0.15, -0.21, -0.42)

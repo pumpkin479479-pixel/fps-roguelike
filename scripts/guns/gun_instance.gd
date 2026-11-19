@@ -47,6 +47,8 @@ static func roll(gun_type: GunType, seed_val: int, lvl := 1) -> GunInstance:
 	g.damage = gun_type.damage * _v(rng) * RARITY_DAMAGE[g.rarity] * lv
 	g.rpm = gun_type.rpm * _v(rng)
 	g.magazine = maxi(1, roundi(gun_type.magazine * _v(rng)))
+	if gun_type.fixed_magazine:
+		g.magazine = gun_type.magazine
 	g.reload_time = gun_type.reload_time * _v(rng)
 	g.pellets = maxi(1, roundi(gun_type.pellets * _v(rng)))
 	g.spread_deg = gun_type.spread_deg * _v(rng)

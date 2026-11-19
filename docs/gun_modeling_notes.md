@@ -52,3 +52,11 @@
 - 面取りと Weighted Normal: https://80.lv/articles/hard-surface-modeling-tips-tricks-for-creating-a-vintage-quirky-looking-gun
 - 一人称の銃を別の視野角で描く Godot のシェーダー: https://godotshaders.com/shader/first-person-view-model-shader-updated-for-godot-4-3/
 - 薬莢の飛び方: https://forum.godotengine.org/t/realistic-cartridge-case-ejection/125513
+
+## 部品を組み立てて動かす(リボルバーで実践、tools/blender/revolver.py)
+- 動く部品は「原点 = 回転軸・滑る基準」にしておく(gunlib.set_pivot)。Godot では rotation / position を1つ変えるだけで正しく動く。
+- 一緒に動く部品は親子にする(gunlib.attach)。例: crane → cylinder → ejector, round_k → bullet_k。
+  振り出すとシリンダーも弾も一緒についてくる。
+- 削り(ブーリアン)は部品ごとに先にかけてからまとめる。まとめた後に削ると、重なった面で失敗して部品ごと消えることがある。
+- 動いた姿勢(振り出し・排莢)も Blender で撮って確かめる。Godot 側の動きは scripts/guns/revolver_rig.gd、
+  確認は tests/revolver_check.tscn(撃つ前後とリロードの途中を撮って、部品の角度を表示する)。

@@ -5,4 +5,5 @@ setlocal
 if "%BLENDER%"=="" set "BLENDER=C:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
 cd /d "%~dp0..\.."
 "%BLENDER%" -b -P tools/blender/ak47.py -- --out assets/models/guns/ak47.glb --render tools/blender/renders
+"%BLENDER%" -b -P tools/blender/revolver.py -- --out assets/models/guns/revolver357.glb --render tools/blender/renders
 endlocal
