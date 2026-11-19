@@ -21,9 +21,34 @@ import sys
 import urllib.error
 import urllib.request
 
-GEMINI_MODELS = [m for m in [os.environ.get("GEMINI_MODEL")] if m] + [
-    "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash",
-]
+API = "https://generativelanguage.googleapis.com/v1beta"
+
+
+def _version_key(name):
+    """'models/gemini-3.1-pro-preview' → (3.1, pro=1, preview でない=1) の順で新しい・強いものを先に。"""
+    import re
+    m = re.search(r"gemini-(\d+(?:\.\d+)?)", name)
+    ver = float(m.group(1)) if m else 0.0
+    return (ver, "pro" in name, "preview" not in name and "exp" not in name)
+
+
+def gemini_models(key):
+    """使えるモデルを API に問い合わせ、新しい pro → flash の順に並べる。GEMINI_MODEL があれば最優先。"""
+    names = []
+    try:
+        req = urllib.request.Request(f"{API}/models?pageSize=200", headers={"x-goog-api-key": key})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.load(r)
+        for m in data.get("models", []):
+            n = m.get("name", "")
+            if ("generateContent" in m.get("supportedGenerationMethods", []) and n.startswith("models/gemini-")
+                    and not any(x in n for x in ("tts", "image", "embedding", "live", "audio", "lite"))):
+                names.append(n.removeprefix("models/"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[review] モデル一覧の取得に失敗: {e}")
+    names.sort(key=_version_key, reverse=True)
+    env = os.environ.get("GEMINI_MODEL")
+    return ([env] if env else []) + names[:4]
 
 
 def ask_gemini(prompt, images):
@@ -39,8 +64,11 @@ def ask_gemini(prompt, images):
     body = json.dumps({"contents": [{"role": "user", "parts": parts}],
                        "generationConfig": {"temperature": 0.4}}).encode()
     errors = []
-    for model in GEMINI_MODELS:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    models = gemini_models(key)
+    if not models:
+        return "(使える Gemini モデルが見つからない)"
+    for model in models:
+        url = f"{API}/models/{model}:generateContent"
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
         try:
             with urllib.request.urlopen(req, timeout=300) as r:
@@ -62,9 +90,10 @@ def ask_codex(prompt, images):
     cmd = [exe, "exec", "--skip-git-repo-check", "-s", "read-only"]
     for p in images:
         cmd += ["-i", os.path.abspath(p)]
-    cmd.append(prompt)
+    # Windows の codex.cmd は複数行の引数を正しく渡せないので、質問文は標準入力から渡す("-")
+    cmd.append("-")
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=900)
+        r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=900)
     except Exception as e:  # noqa: BLE001
         return f"(Codex の実行に失敗: {e})"
     if r.returncode != 0:

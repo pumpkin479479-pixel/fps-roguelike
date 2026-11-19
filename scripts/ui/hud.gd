@@ -113,6 +113,7 @@ func _process(dt: float) -> void:
 	_hurt_a = maxf(0.0, _hurt_a - dt)
 	_hurt.color.a = _hurt_a
 	(_cross as Crosshair).spread = g.spread_deg * (0.4 if h.aiming else 1.0) if g else 1.0
+	_cross.visible = not h.aiming  # 構えている間は照準器で狙うので十字は消す
 	_cross.queue_redraw()
 
 
