@@ -55,6 +55,8 @@ def material(name):
 
 def _new_object(name, bm, mat, parent=None):
     mesh = bpy.data.meshes.new(name)
+    # 座標の入れ替えで裏返った面を外向きに直す(裏返ったままだと、削りが失敗し、ゲームでは面が消える)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh)
     bm.free()
     obj = bpy.data.objects.new(name, mesh)

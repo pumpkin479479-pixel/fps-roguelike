@@ -30,6 +30,12 @@ var _ads_pitch := 0.0
 var _aim_t := 0.0
 var _flash: OmniLight3D
 var _kick := 0.0
+## 可動部: モデルの "bolt"(ボルトとコッキングハンドル)を撃つたびに後ろへ動かす
+var _bolt: Node3D
+var _bolt_rest := Vector3.ZERO
+var _bolt_t := 1.0
+var _eject: Node3D
+const BOLT_TRAVEL := 0.055
 var _bm: BulletManager
 var _player: Player
 var _rng := RandomNumberGenerator.new()
@@ -91,6 +97,10 @@ func _equip() -> void:
 	_view = GunVisual.build_instance(g)
 	add_child(_view)
 	_muzzle = GunVisual.find_muzzle(_view)
+	_bolt = _view.find_child("bolt", true, false) as Node3D
+	_bolt_rest = _bolt.position if _bolt else Vector3.ZERO
+	_bolt_t = 1.0
+	_eject = _view.find_child("ejection_port", true, false) as Node3D
 	# モデルに照準点(ads_eye)があれば、構えたときに照準線が画面中央に来るよう位置を決める
 	var eye := _view.find_child("ads_eye", true, false) as Node3D
 	var post := _view.find_child("front_post_tip", true, false) as Node3D
@@ -179,6 +189,7 @@ func _process(dt: float) -> void:
 		_view.position = Vector3(0, 0, kick * 0.08)
 		rotation = HIP_ROT * (1.0 - _aim_t)
 		_view.rotation = Vector3(kick * 0.25 + (0.6 if reloading else 0.0) + _ads_pitch * _aim_t, 0, (0.5 if reloading else 0.0))
+		_update_bolt(dt, g)
 		if g.type.fire_mode == GunType.FireMode.CHARGE:
 			_view.position.x = _rng.randf_range(-1, 1) * 0.004 * charge
 	_flash.light_energy = maxf(0.0, _flash.light_energy - dt * 60.0)
@@ -217,10 +228,23 @@ func _fire(g: GunInstance) -> void:
 				t.bullet_size, t.bullet_color, maxf(t.bullet_size * 0.6, 0.12))
 
 	_kick = minf(_kick + 0.4 + g.recoil * 0.15, 1.5)
+	_bolt_t = 0.0
+	if _eject:
+		Casing.spawn(get_tree().current_scene, _eject.global_transform, _player.velocity if _player else Vector3.ZERO, _rng)
 	_flash.global_position = muzzle
 	_flash.light_energy = 3.0
 	if _player:
 		_player.add_recoil(g.recoil * (0.5 if aiming else 1.0))
+
+
+## ボルトの往復: 1発の間隔より少し短い時間で、素早く下がってから戻る
+func _update_bolt(dt: float, g: GunInstance) -> void:
+	if _bolt == null:
+		return
+	var cycle := minf(60.0 / g.rpm * 0.9, 0.12)
+	_bolt_t = minf(1.0, _bolt_t + dt / cycle)
+	var k := _bolt_t / 0.35 if _bolt_t < 0.35 else 1.0 - (_bolt_t - 0.35) / 0.65
+	_bolt.position = _bolt_rest + Vector3(0, 0, BOLT_TRAVEL * clampf(k, 0.0, 1.0))
 
 
 func _spread_dir(dir: Vector3, spread: float) -> Vector3:
@@ -272,3 +296,52 @@ class Beam extends MeshInstance3D:
 			queue_free()
 			return
 		scale = Vector3(k, 1, k)
+
+
+## 飛び出す薬莢(真鍮の小さな筒)。排莢口から右上へ回転しながら飛び、少しして消える
+class Casing extends MeshInstance3D:
+	const MAX := 48
+	static var _mesh: CylinderMesh
+	static var _live: Array[Casing] = []
+	var vel := Vector3.ZERO
+	var spin := Vector3.ZERO
+	var life := 1.2
+
+	static func spawn(parent: Node, at: Transform3D, base_vel: Vector3, rng: RandomNumberGenerator) -> void:
+		if _mesh == null:
+			_mesh = CylinderMesh.new()
+			_mesh.top_radius = 0.0042
+			_mesh.bottom_radius = 0.0058
+			_mesh.height = 0.040
+			_mesh.radial_segments = 8
+			_mesh.rings = 1
+			var m := StandardMaterial3D.new()
+			m.albedo_color = Color(0.85, 0.62, 0.25)
+			m.metallic = 0.85
+			m.roughness = 0.3
+			_mesh.material = m
+		while _live.size() >= MAX:
+			var old: Casing = _live.pop_front()
+			if is_instance_valid(old):
+				old.queue_free()
+		var c := Casing.new()
+		c.mesh = _mesh
+		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(c)
+		var b := at.basis.orthonormalized()
+		# 銃の右(+X)・少し上・少し後ろへ
+		c.global_transform = Transform3D(b * Basis(Vector3.FORWARD, PI * 0.5), at.origin)
+		c.vel = base_vel + b.x * rng.randf_range(2.2, 3.0) + b.y * rng.randf_range(1.0, 1.8) + b.z * rng.randf_range(0.2, 0.7)
+		c.spin = Vector3(rng.randf_range(-20, 20), rng.randf_range(-30, 30), rng.randf_range(-20, 20))
+		_live.append(c)
+
+	func _process(dt: float) -> void:
+		life -= dt
+		if life <= 0.0:
+			_live.erase(self)
+			queue_free()
+			return
+		vel.y -= 9.8 * dt
+		global_position += vel * dt
+		rotate_object_local(Vector3.RIGHT, spin.x * dt)
+		rotate_object_local(Vector3.UP, spin.y * dt)

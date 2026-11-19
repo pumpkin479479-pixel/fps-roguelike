@@ -38,6 +38,39 @@ g.PALETTE["recess"] = ((0.010, 0.010, 0.012), 0.5, 0.7)
 g.reset_scene()
 
 
+# ======================= 照準像の設計(構えた画面から逆算) =======================
+# 先に「構えたとき 1600x900 の画面でどう見えるか」をピクセルで決め、目からの距離で実寸に直す。
+# 画面上の大きさ(px) = 実寸 / 距離 * PX_PER_RAD。照門は目に近いので小さく、照星は遠いので太くなる。
+FAT, SHORT, PIVOT = 1.15, 0.82, 0.135   # デフォルメ(下の stylize と共通): 左右に太く、銃身側を短く
+ADS_VFOV_DEG = 52.0          # 構え中の縦の視野角(player.gd: 85 - 33)
+SCREEN_H = 900
+EYE_DIST = 0.17              # 目から照門までの距離(data/guns/ak47.tres の ads_eye_dist と同じ値にする)
+PX_PER_RAD = (SCREEN_H / 2) / math.tan(math.radians(ADS_VFOV_DEG / 2))
+REAR_Y, POST_Y = 0.119, 0.479                       # 生の座標での照門・照星の位置
+FRONT_DIST = EYE_DIST + (PIVOT + (POST_Y - PIVOT) * SHORT) - REAR_Y  # 目から照星まで(銃身側の縮みを考慮)
+SIGHT_PX = dict(notch_w=90, notch_depth=45, rear_w=250, post_w=14, ear_gap=72, ear_thick=11)
+
+
+def at_rear(px):
+    return px / PX_PER_RAD * EYE_DIST
+
+
+def at_front(px):
+    return px / PX_PER_RAD * FRONT_DIST
+
+
+NOTCH_W = at_rear(SIGHT_PX["notch_w"]) / FAT          # 生の座標の幅(あとで FAT 倍される)
+NOTCH_DEPTH = at_rear(SIGHT_PX["notch_depth"])
+REAR_W = at_rear(SIGHT_PX["rear_w"]) / FAT
+POST_R = at_front(SIGHT_PX["post_w"]) / 2 / FAT
+EAR_HALF_T = at_front(SIGHT_PX["ear_thick"]) / 2 / FAT
+EAR_X = (at_front(SIGHT_PX["ear_gap"]) / 2) / FAT + EAR_HALF_T   # 耳の板の中心
+NOTCH_TOP = 0.0700   # 照準線の高さ。上蓋から十分上げて、構えたとき上蓋が視界を塞がないように
+POST_TIP = NOTCH_TOP + 0.004
+print(f"[ak47] 照準: 溝 幅{NOTCH_W * FAT * 1000:.1f} 深さ{NOTCH_DEPTH * 1000:.1f} 照門幅{REAR_W * FAT * 1000:.1f} "
+      f"柱 太さ{POST_R * 2 * FAT * 1000:.1f} 耳の空き{(EAR_X - EAR_HALF_T) * 2 * FAT * 1000:.1f} 厚さ{EAR_HALF_T * 2 * FAT * 1000:.1f} (mm)")
+
+
 def sec(y, zc, w, h, r, x=0.0, seg=2):
     """Y に垂直な角丸断面(中心の高さ zc)。"""
     return g.ring_y(y, zc, RR(w, h, r, seg), x)
@@ -102,17 +135,20 @@ rs_block = g.loft("rear_sight_block", [
 ], "steel", smooth_angle=40)
 # リアサイトのリーフ(前で蝶番、後端に U 字の切り欠き)とスライダー
 # 照尺板: 厚さ 2.5mm、幅 16mm、前の蝶番から後ろへ少し上がりながら伸びる
-leaf = g.prism("rs_leaf", [(0.119, 0.0480), (0.119, 0.0505), (0.172, 0.0490), (0.172, 0.0465)], 0.016, "steel_worn")
+leaf = g.prism("rs_leaf", [(0.119, 0.0460), (0.119, 0.0485), (0.172, 0.0470), (0.172, 0.0445)], 0.016, "steel_worn")
 g.bevel(leaf, 0.0005, 1)
-# 照門: 後端の立ち上がり(幅 26mm・前後 5mm・高さ 14mm)に、幅 11mm・深さ 9mm の大きな U 字の溝(デフォルメ)
-notch = g.prism("rs_notch", [(0.116, 0.0440), (0.116, 0.0610), (0.122, 0.0610), (0.122, 0.0440)], 0.030, "steel_worn")
-g.cut(notch, g.box("c1", (0, 0.1190, 0.0620), (0.0130, 0.01, 0.0130), "recess"))
-g.cut(notch, g.tube_y("c2", 0.110, 0.131, 0.0065, "recess", z=0.0555, segments=28))
+# 照門: 板の幅・U 字の幅と深さは上の照準像の設計から(底が丸い U)
+notch = g.prism("rs_notch", [(0.116, 0.0430), (0.116, NOTCH_TOP), (0.122, NOTCH_TOP), (0.122, 0.0430)], REAR_W, "steel_worn")
+_u_r = NOTCH_W / 2
+_u_c = NOTCH_TOP - NOTCH_DEPTH + _u_r
+# 円柱を先に削り、箱は円柱の側面と面が重ならないようにわずかに細くする(重なると削りに失敗する)
+g.cut(notch, g.tube_y("c2", 0.110, 0.131, _u_r, "recess", z=_u_c, segments=32))
+g.cut(notch, g.box("c1", (0, 0.1190, _u_c + 0.0102), (NOTCH_W * 0.99, 0.01, 0.020), "recess"))
 g.bevel(notch, 0.0018, 3)
-rs_knobs = [g.tube_x(f"rs_knob_{sx}", (sx * 0.0160, 0.1205, 0.0505), 0.004, 0.0042, "steel", segments=16) for sx in (-1, 1)]
-leaf_rib = g.box("rs_leaf_rib", (0, 0.145, 0.0512), (0.004, 0.050, 0.0015), "steel_worn")
-slider = g.box("rs_slider", (0, 0.146, 0.0505), (0.020, 0.010, 0.006), "steel", bevel=0.001)
-slider_btn = g.tube_x("rs_slider_btn", (0.0115, 0.146, 0.0505), 0.004, 0.0028, "steel_worn")
+rs_knobs = [g.tube_x(f"rs_knob_{sx}", (sx * (REAR_W / 2 + 0.0015), 0.1205, 0.0490), 0.004, 0.0042, "steel", segments=16) for sx in (-1, 1)]
+leaf_rib = g.box("rs_leaf_rib", (0, 0.145, 0.0490), (0.004, 0.050, 0.0015), "steel_worn")
+slider = g.box("rs_slider", (0, 0.146, 0.0480), (0.020, 0.010, 0.006), "steel", bevel=0.001)
+slider_btn = g.tube_x("rs_slider_btn", (0.0115, 0.146, 0.0480), 0.004, 0.0028, "steel_worn")
 hinge = g.tube_x("rs_hinge", (0, 0.172, 0.047), 0.030, 0.003, "steel")
 gas_latch = g.box("gas_tube_latch", (0.0155, 0.172, 0.032), (0.004, 0.016, 0.006), "steel_worn", bevel=0.001)
 # トリガーガード、マガジンキャッチ
@@ -144,7 +180,7 @@ pins = []
 for side in (-1, 1):
     for (py, pz) in [(-0.008, -0.016), (0.018, -0.012), (0.040, -0.012)]:
         pins.append(g.tube_x(f"pin_{side}_{py}", (side * 0.0170, py, pz), 0.0025, 0.0034, "steel_worn", segments=14))
-receiver_parts = dc_seams + [receiver, bolt_carrier, bolt_face, dust_cover, dc_step, spring_button, rs_block, leaf,
+receiver_parts = dc_seams + [receiver, dust_cover, dc_step, spring_button, rs_block, leaf,
                   notch, leaf_rib, slider, slider_btn] + rs_knobs + [hinge, gas_latch, guard_bottom, guard_front, mag_catch,
                   grip, selector, selector_tab, selector_pivot] + pins
 
@@ -155,27 +191,28 @@ g.bevel(muzzle_nut, 0.0008, 2)
 g.cut(muzzle_nut, g.tube_y("c", 0.510, 0.53, 0.0043, "recess", z=BARREL_Z, segments=16))
 bore = g.tube_y("bore_dark", 0.508, 0.5105, 0.0044, "recess", z=BARREL_Z, segments=16)
 # フロントサイト: 銃身を抱く台、左右の耳、中央の柱
-fs_base = g.loft("fs_base", [sec(0.462, 0.008, 0.024, 0.030, 0.008), sec(0.496, 0.008, 0.024, 0.030, 0.008)], "steel")
-fs_tower = g.prism("fs_tower", [(0.468, 0.020), (0.471, 0.040), (0.487, 0.040), (0.490, 0.020)], 0.008, "steel", bevel=0.001)
+fs_base = g.loft("fs_base", [sec(0.462, 0.010, 2 * (EAR_X + EAR_HALF_T) + 0.002, 0.034, 0.009), sec(0.496, 0.010, 2 * (EAR_X + EAR_HALF_T) + 0.002, 0.034, 0.009)], "steel")
+fs_tower = g.prism("fs_tower", [(0.468, 0.020), (0.471, POST_TIP - 0.022), (0.487, POST_TIP - 0.022), (0.490, 0.020)], 0.008, "steel", bevel=0.001)
 def ear_section(side, top):
-    """照星の耳の断面(正面から見た形): 下から外へふくらみ、上で内側へ曲がる。厚さ 2.5mm。"""
+    """照星の耳の断面(正面から見た形): 馬蹄形。台から立ち上がり、柱を大きく囲んで、上端だけ内側へ曲がる。
+    中心の位置 EAR_X と厚さは照準像の設計から(柱の左右が広く空くように)。"""
     outer, inner = [], []
-    for k in range(7):
-        t = k / 6
-        z = 0.018 + (top - 0.018) * t
-        x = 0.0100 + 0.0030 * math.sin(math.pi * min(t * 1.3, 1.0)) - 0.0065 * max(0.0, t - 0.6) / 0.4
-        outer.append((side * (x + 0.00220), z))
-        inner.append((side * (x - 0.00220), z))
+    for k in range(9):
+        t = k / 8
+        z = 0.024 + (top - 0.024) * t
+        x = EAR_X - EAR_HALF_T * 1.5 * max(0.0, t - 0.75) / 0.25
+        outer.append((side * (x + EAR_HALF_T), z))
+        inner.append((side * (x - EAR_HALF_T), z))
     pts = outer + list(reversed(inner))
     return pts if side > 0 else list(reversed(pts))
 
 
 # 耳は前縁が斜め(前が低い)
-ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, 0.074)),
-                               g.ring_y(0.487, 0.0, ear_section(s, 0.074))], "steel", smooth_angle=40)
+ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, POST_TIP + 0.009)),
+                               g.ring_y(0.487, 0.0, ear_section(s, POST_TIP + 0.009))], "steel", smooth_angle=40)
         for s in (-1, 1)]
-fs_post = g.tube_y("fs_post_tmp", 0, 0.024, 0.0021, "steel_worn", segments=12)
-fs_post.data.transform(Matrix.Translation((0, 0.479, 0.053)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))
+fs_post = g.tube_y("fs_post_tmp", 0, 0.024, POST_R, "steel_worn", segments=16)
+fs_post.data.transform(Matrix.Translation((0, 0.479, POST_TIP - 0.012)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))
 fs_post.name = "fs_post"
 g.bevel(fs_base, 0.001, 2)
 bayonet_lug = g.box("bayonet_lug", (0, 0.481, -0.014), (0.010, 0.026, 0.010), "steel", bevel=0.001)
@@ -310,15 +347,16 @@ parts = [
     g.join("barrel", barrel_parts),
     g.join("magazine", [magazine, mag_floor, mag_lug, mag_spine] + ribs),
     g.join("stock", [stock, butt_plate, stock_tang, tang_screw, stock_collar, sling_loop]),
-    g.join("bolt_handle", [bolt_handle, bolt_knob]),
+    g.join("bolt", [bolt_carrier, bolt_face, bolt_handle, bolt_knob]),  # 撃つたびに後ろへ動く(Godot 側で動かす)
     trigger,
 ]
 trigger.name = "trigger"
 
 points = {
     "muzzle": (0, 0.524, BARREL_Z),
-    "ads_eye": (0, 0.1190, 0.0610),    # 照門の溝の上端。構えたとき目がこの延長線上に来る
-    "front_post_tip": (0, 0.479, 0.065),
+    "ejection_port": (0.018, 0.050, 0.015),  # 薬莢が出る所(排莢口の右)
+    "ads_eye": (0, 0.1190, NOTCH_TOP),    # 照門の溝の上端。構えたとき目がこの延長線上に来る
+    "front_post_tip": (0, 0.479, POST_TIP),
     "attach_barrel": (0, 0.135, BARREL_Z),
     "attach_magazine": (0, 0.090, -0.030),
     "attach_stock": (0, -0.125, -0.005),
@@ -327,9 +365,6 @@ points = {
 }
 
 # デフォルメ(設定画の「中くらい」): 全体を左右に 15% 太く、銃身まわり(y > 0.135)を 18% 短く
-FAT, SHORT, PIVOT = 1.15, 0.82, 0.135
-
-
 def stylize(v):
     v = Vector(v)
     v.x *= FAT
