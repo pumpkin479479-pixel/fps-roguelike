@@ -28,17 +28,18 @@ func _ready() -> void:
 	for k in 3:
 		var v := GunVisual.build(t, k * 0.5, 7.0)
 		v.rotation_degrees = Vector3(0, 90, 0)  # 銃口を左へ
-		v.position = Vector3(0.22, 0.28 - k * 0.28, 0)
+		v.position = Vector3(0.22, 0.34 - k * 0.34, 0)
 		add_child(v)
 		var l := Label3D.new()
 		l.text = "使い込み %.1f" % (k * 0.5)
+		l.no_depth_test = true
 		l.font_size = 24
 		l.pixel_size = 0.0008
-		l.position = v.position + Vector3(0.15, 0.1, 0.05)
+		l.position = v.position + Vector3(0.05, 0.12, 0.05)
 		add_child(l)
 	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, -0.05, 1.25)
-	cam.rotation_degrees = Vector3(-8, 0, 0)
-	cam.position.y += 0.1
+	cam.position = Vector3(0.05, -0.05, 1.45)
+	cam.rotation_degrees = Vector3(0, 0, 0)
+	cam.position.y = 0.02
 	cam.fov = 45
 	add_child(cam)

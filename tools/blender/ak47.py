@@ -55,7 +55,7 @@ for sx in (-1, 1):
     g.cut(receiver, g.tube_x("c2", (sx * 0.0175, 0.121, -0.010), 0.010, 0.0085, "recess", segments=24))
 # 排莢口(右、長さ 100mm・高さ 20mm)。壁を抜いて中のボルトキャリアを見せる
 g.cut(receiver, g.box("c", (0.0150, 0.050, 0.015), (0.010, 0.100, 0.020), "recess"))
-g.bevel(receiver, 0.0010, 2, flat=True)
+g.bevel(receiver, 0.0022, 3, flat=True)
 # 排莢口の奥に見えるボルトキャリア(少し明るい鉄)とボルト
 bolt_carrier = g.loft("bolt_carrier_visible", [sec(0.000, 0.015, 0.024, 0.018, 0.004, seg=3), sec(0.098, 0.015, 0.024, 0.018, 0.004, seg=3)], "steel_bright")
 bolt_face = g.tube_y("bolt_head", 0.098, 0.112, 0.0065, "steel", z=0.012, segments=16)
@@ -81,15 +81,15 @@ def dc_section(w, h_side, top_w, h_top):
 
 dust_cover = g.loft("dust_cover", [
     g.ring_y(-0.134, 0.022, dc_section(0.027, 0.002, 0.007, 0.007)),
-    g.ring_y(-0.128, 0.022, dc_section(0.033, 0.004, 0.009, 0.0115)),
-    g.ring_y(-0.122, 0.022, dc_section(0.035, 0.006, 0.010, 0.020)),
-    g.ring_y(0.104, 0.022, dc_section(0.035, 0.006, 0.010, 0.020)),
-    g.ring_y(0.112, 0.022, dc_section(0.033, 0.006, 0.009, 0.018)),
+    g.ring_y(-0.128, 0.022, dc_section(0.033, 0.006, 0.014, 0.016)),
+    g.ring_y(-0.122, 0.022, dc_section(0.035, 0.009, 0.016, 0.026)),
+    g.ring_y(0.104, 0.022, dc_section(0.035, 0.009, 0.016, 0.026)),
+    g.ring_y(0.112, 0.022, dc_section(0.033, 0.009, 0.015, 0.024)),
 ], "steel", smooth_angle=30)
 # 後部の段(ダストカバー後端の補強の盛り上がり)
 dc_step = g.loft("dust_cover_step", [
-    g.ring_y(-0.121, 0.022, dc_section(0.0356, 0.006, 0.0106, 0.0205)),
-    g.ring_y(-0.100, 0.022, dc_section(0.0356, 0.006, 0.0106, 0.0205)),
+    g.ring_y(-0.121, 0.022, dc_section(0.0356, 0.009, 0.0166, 0.0265)),
+    g.ring_y(-0.100, 0.022, dc_section(0.0356, 0.009, 0.0166, 0.0265)),
 ], "steel", smooth_angle=30)
 dc_seams = [g.box(f"dust_cover_seam_{s}", (s * 0.0172, -0.005, 0.0225), (0.0012, 0.215, 0.0010), "recess") for s in (-1, 1)]
 spring_button = g.tube_y("spring_button", -0.140, -0.128, 0.0062, "steel_worn", z=0.030, segments=20)
@@ -105,11 +105,11 @@ rs_block = g.loft("rear_sight_block", [
 leaf = g.prism("rs_leaf", [(0.119, 0.0480), (0.119, 0.0505), (0.172, 0.0490), (0.172, 0.0465)], 0.016, "steel_worn")
 g.bevel(leaf, 0.0005, 1)
 # 照門: 後端の立ち上がり(幅 26mm・前後 5mm・高さ 14mm)に、幅 11mm・深さ 9mm の大きな U 字の溝(デフォルメ)
-notch = g.prism("rs_notch", [(0.117, 0.0440), (0.117, 0.0580), (0.122, 0.0580), (0.122, 0.0440)], 0.026, "steel_worn")
-g.cut(notch, g.box("c1", (0, 0.1195, 0.0600), (0.0110, 0.01, 0.0110), "recess"))
-g.cut(notch, g.tube_y("c2", 0.110, 0.131, 0.0055, "recess", z=0.0545, segments=24))
-g.bevel(notch, 0.0012, 2)
-rs_knobs = [g.tube_x(f"rs_knob_{sx}", (sx * 0.0165, 0.1215, 0.0505), 0.006, 0.0050, "steel", segments=16) for sx in (-1, 1)]
+notch = g.prism("rs_notch", [(0.116, 0.0440), (0.116, 0.0610), (0.122, 0.0610), (0.122, 0.0440)], 0.030, "steel_worn")
+g.cut(notch, g.box("c1", (0, 0.1190, 0.0620), (0.0130, 0.01, 0.0130), "recess"))
+g.cut(notch, g.tube_y("c2", 0.110, 0.131, 0.0065, "recess", z=0.0555, segments=28))
+g.bevel(notch, 0.0018, 3)
+rs_knobs = [g.tube_x(f"rs_knob_{sx}", (sx * 0.0160, 0.1205, 0.0505), 0.004, 0.0042, "steel", segments=16) for sx in (-1, 1)]
 leaf_rib = g.box("rs_leaf_rib", (0, 0.145, 0.0512), (0.004, 0.050, 0.0015), "steel_worn")
 slider = g.box("rs_slider", (0, 0.146, 0.0505), (0.020, 0.010, 0.006), "steel", bevel=0.001)
 slider_btn = g.tube_x("rs_slider_btn", (0.0115, 0.146, 0.0505), 0.004, 0.0028, "steel_worn")
@@ -163,19 +163,19 @@ def ear_section(side, top):
     for k in range(7):
         t = k / 6
         z = 0.018 + (top - 0.018) * t
-        x = 0.0100 + 0.0025 * math.sin(math.pi * min(t * 1.4, 1.0)) - 0.0040 * max(0.0, t - 0.7) / 0.3
-        outer.append((side * (x + 0.00180), z))
-        inner.append((side * (x - 0.00180), z))
+        x = 0.0100 + 0.0030 * math.sin(math.pi * min(t * 1.3, 1.0)) - 0.0065 * max(0.0, t - 0.6) / 0.4
+        outer.append((side * (x + 0.00220), z))
+        inner.append((side * (x - 0.00220), z))
     pts = outer + list(reversed(inner))
     return pts if side > 0 else list(reversed(pts))
 
 
 # 耳は前縁が斜め(前が低い)
-ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, 0.070)),
-                               g.ring_y(0.487, 0.0, ear_section(s, 0.070))], "steel", smooth_angle=40)
+ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.470, 0.0, ear_section(s, 0.054)), g.ring_y(0.477, 0.0, ear_section(s, 0.074)),
+                               g.ring_y(0.487, 0.0, ear_section(s, 0.074))], "steel", smooth_angle=40)
         for s in (-1, 1)]
 fs_post = g.tube_y("fs_post_tmp", 0, 0.024, 0.0021, "steel_worn", segments=12)
-fs_post.data.transform(Matrix.Translation((0, 0.479, 0.050)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))
+fs_post.data.transform(Matrix.Translation((0, 0.479, 0.053)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))
 fs_post.name = "fs_post"
 g.bevel(fs_base, 0.001, 2)
 bayonet_lug = g.box("bayonet_lug", (0, 0.481, -0.014), (0.010, 0.026, 0.010), "steel", bevel=0.001)
@@ -238,9 +238,9 @@ mag_rings, floor_rings = [], []
 for i in range(12):
     t = -0.05 + 1.05 * i / 11
     p, radial = mag_frame(t)
-    mag_rings.append(g.ring(p, (1, 0, 0), radial, RR(0.0265, 0.050 + 0.008 * max(t, 0), 0.004, 2)))
+    mag_rings.append(g.ring(p, (1, 0, 0), radial, RR(0.0290, 0.058 + 0.008 * max(t, 0), 0.005, 2)))
 magazine = g.loft("magazine_body", mag_rings, "steel", smooth_angle=30)
-for t, w, d in [(1.0, 0.029, 0.062), (1.022, 0.029, 0.062)]:
+for t, w, d in [(1.0, 0.032, 0.070), (1.022, 0.032, 0.070)]:
     p, radial = mag_frame(t)
     floor_rings.append(g.ring(p, (1, 0, 0), radial, RR(w, d, 0.003)))
 mag_floor = g.loft("mag_floor", floor_rings, "steel_worn")
@@ -251,13 +251,13 @@ for side in (-1, 1):
         for i in range(8):
             t = 0.12 + 0.76 * i / 7
             p, radial = mag_frame(t)
-            rr.append(g.ring(p + Vector((side * 0.0138, 0, 0)) + radial * off, (1, 0, 0), radial, RR(0.0030, 0.0055, 0.0012, 2)))
+            rr.append(g.ring(p + Vector((side * 0.0150, 0, 0)) + radial * off, (1, 0, 0), radial, RR(0.0030, 0.0055, 0.0012, 2)))
         ribs.append(g.loft(f"mag_rib_{side}_{off}", rr, "steel"))
 spine = []
 for i in range(10):
     t = -0.02 + 1.0 * i / 9
     p, radial = mag_frame(t)
-    spine.append(g.ring(p + radial * (0.025 + 0.004 * max(t, 0)), (1, 0, 0), radial, RR(0.010, 0.004, 0.0015, 2)))
+    spine.append(g.ring(p + radial * (0.029 + 0.004 * max(t, 0)), (1, 0, 0), radial, RR(0.010, 0.004, 0.0015, 2)))
 mag_spine = g.loft("mag_spine", spine, "steel")
 mag_lug = g.box("mag_front_lug", (0, 0.124, -0.026), (0.012, 0.008, 0.010), "steel")
 
@@ -268,11 +268,11 @@ stock = g.loft("stock_body", [
     sec(-0.140, -0.014, 0.027, 0.040, 0.012, seg=5),   # 首
     sec(-0.175, -0.026, 0.031, 0.052, 0.014, seg=5),
     sec(-0.250, -0.051, 0.039, 0.084, 0.018, seg=5),   # 横がふくらんだ楕円に近い断面
-    sec(-0.330, -0.080, 0.042, 0.106, 0.019, seg=5),
-    sec(-0.358, -0.089, 0.042, 0.112, 0.018, seg=5),
+    sec(-0.330, -0.072, 0.042, 0.094, 0.019, seg=5),
+    sec(-0.358, -0.079, 0.042, 0.098, 0.018, seg=5),
 ], "wood", smooth_angle=60)
 g.bevel(stock, 0.004, 3, angle=50)
-butt_plate = g.loft("butt_plate", [sec(-0.358, -0.089, 0.043, 0.114, 0.018, seg=5), sec(-0.367, -0.089, 0.043, 0.114, 0.018, seg=5)], "steel")
+butt_plate = g.loft("butt_plate", [sec(-0.358, -0.079, 0.043, 0.100, 0.018, seg=5), sec(-0.367, -0.079, 0.043, 0.100, 0.018, seg=5)], "steel")
 g.bevel(butt_plate, 0.0015, 2)
 # レシーバー後端の下でストックを受ける座金と、木部の上を後ろへ伸びるタング(幅 14mm・長さ 40mm)
 stock_tang = g.loft("stock_tang", [
@@ -317,8 +317,8 @@ trigger.name = "trigger"
 
 points = {
     "muzzle": (0, 0.524, BARREL_Z),
-    "ads_eye": (0, 0.1195, 0.0580),    # 照門の溝の上端。構えたとき目がこの延長線上に来る
-    "front_post_tip": (0, 0.479, 0.062),
+    "ads_eye": (0, 0.1190, 0.0610),    # 照門の溝の上端。構えたとき目がこの延長線上に来る
+    "front_post_tip": (0, 0.479, 0.065),
     "attach_barrel": (0, 0.135, BARREL_Z),
     "attach_magazine": (0, 0.090, -0.030),
     "attach_stock": (0, -0.125, -0.005),
@@ -326,8 +326,8 @@ points = {
     "attach_option": (0, 0.250, -0.034),
 }
 
-# デフォルメ(設定画の「中くらい」): 全体を左右に 12% 太く、銃身まわり(y > 0.135)を 10% 短く
-FAT, SHORT, PIVOT = 1.12, 0.90, 0.135
+# デフォルメ(設定画の「中くらい」): 全体を左右に 15% 太く、銃身まわり(y > 0.135)を 18% 短く
+FAT, SHORT, PIVOT = 1.15, 0.82, 0.135
 
 
 def stylize(v):

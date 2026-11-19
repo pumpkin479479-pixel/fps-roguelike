@@ -71,13 +71,15 @@ void fragment() {
 	// 角の検出: 画面上で法線が急に変わる所(面取りした角)を角とみなす
 	vec3 n = normalize(obj_nrm);
 	float edge = clamp(length(fwidth(n)) * 10.0, 0.0, 1.0);
-	edge *= smoothstep(0.55, 0.75, fbm(obj_pos * 40.0) + wear * 0.45);
+	// 擦れは均一な線でなく、途切れた欠けの集まりにする
+	edge *= step(0.62 - wear * 0.22, fbm(obj_pos * 22.0));
 
 	if (kind == 1) {
 		// 木: 銃の長さ方向(Z)に流れる木目
-		float grain = fbm(vec3(obj_pos.x * 60.0, obj_pos.y * 60.0, obj_pos.z * 6.0));
-		float rings = sin((obj_pos.y * 90.0 + obj_pos.x * 40.0 + grain * 9.0)) * 0.5 + 0.5;
-		col *= mix(0.72, 1.12, rings * 0.6 + grain * 0.4);
+		// 細い木目ではなく、太い筆跡のような色の帯
+		float grain = fbm(vec3(obj_pos.x * 25.0, obj_pos.y * 25.0, obj_pos.z * 3.0));
+		float rings = sin((obj_pos.y * 35.0 + obj_pos.x * 20.0 + grain * 6.0)) * 0.5 + 0.5;
+		col *= mix(0.78, 1.1, smoothstep(0.2, 0.8, rings * 0.5 + grain * 0.5));
 		col *= mix(0.9, 1.08, big);
 		col = mix(col, col * 1.5 + 0.03, edge * 0.6);       // 角のニスがはげて明るい
 		rough = mix(rough, 0.8, edge * 0.7);
@@ -93,7 +95,7 @@ void fragment() {
 		col = mix(col, edge_color, edge * (0.4 + wear * 0.6));
 		metal = mix(metal, 0.9, edge);
 		rough = mix(rough, 0.28, edge);
-		float sc = scratches(obj_pos, wear) * wear;
+		float sc = scratches(obj_pos, wear) * wear * 0.5;
 		col = mix(col, edge_color * 0.8, sc * 0.7);
 		rough = mix(rough, 0.3, sc);
 		rough = mix(rough, rough + 0.12, fine);
