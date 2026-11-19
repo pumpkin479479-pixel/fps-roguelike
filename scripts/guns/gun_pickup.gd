@@ -25,7 +25,7 @@ func _ready() -> void:
 	cs.shape = shape
 	add_child(cs)
 
-	_model = GunVisual.build(gun.type)
+	_model = GunVisual.build_instance(gun)
 	_model.scale = Vector3.ONE * 1.4
 	_model.position.y = 0.6
 	add_child(_model)

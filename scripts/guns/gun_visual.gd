@@ -4,7 +4,28 @@ extends RefCounted
 ## Blender で作ったモデル(model_path)があればそれを使い、無ければ寸法から仮の箱モデルを作る。
 ## どちらの場合も "muzzle" という名前の点を持つ(弾はここから出る)。
 
-static func build(gun: GunType) -> Node3D:
+const SURFACE_SHADER := preload("res://shaders/gun_surface.gdshader")
+## Blender の素材名 → (種類 0=金属 1=木 2=樹脂, 擦れて出る色)
+const SURFACES := {
+	"steel": [0, Color(0.42, 0.42, 0.44)],
+	"steel_worn": [0, Color(0.5, 0.5, 0.52)],
+	"steel_bright": [0, Color(0.5, 0.5, 0.52)],
+	"wood": [1, Color()],
+	"wood_dark": [1, Color()],
+	"bakelite": [2, Color()],
+}
+
+
+## 拾った銃1丁の見た目。使い込み具合と模様の位置は銃のシード値で決まる(同じ銃は同じ見た目)。
+static func build_instance(g: GunInstance) -> Node3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = g.seed_value
+	# レア度が高いほど手入れがいい(傷が少ない)
+	var wear := clampf(rng.randf_range(0.25, 1.0) - float(g.rarity) * 0.18, 0.05, 1.0)
+	return build(g.type, wear, rng.randf_range(0.0, 50.0))
+
+
+static func build(gun: GunType, wear := 0.5, pattern_seed := 0.0) -> Node3D:
 	if gun.model_path != "" and ResourceLoader.exists(gun.model_path):
 		var scene := load(gun.model_path) as PackedScene
 		if scene:
@@ -14,8 +35,35 @@ static func build(gun: GunType) -> Node3D:
 				m.name = "muzzle"
 				m.position = Vector3(0, 0.05, -0.8)
 				root.add_child(m)
+			_apply_surfaces(root, wear, pattern_seed)
 			return root
 	return _placeholder(gun)
+
+
+## Blender で付けた単色の素材を、傷・擦れ・木目の出る素材に置き換える
+static func _apply_surfaces(root: Node, wear: float, pattern_seed: float) -> void:
+	var cache := {}
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh := (mi as MeshInstance3D).mesh
+		if mesh == null:
+			continue
+		for k in mesh.get_surface_count():
+			var src := mesh.surface_get_material(k) as BaseMaterial3D
+			if src == null or not SURFACES.has(src.resource_name):
+				continue
+			if not cache.has(src.resource_name):
+				var info: Array = SURFACES[src.resource_name]
+				var sm := ShaderMaterial.new()
+				sm.shader = SURFACE_SHADER
+				sm.set_shader_parameter("base_color", src.albedo_color)
+				sm.set_shader_parameter("metallic_value", src.metallic)
+				sm.set_shader_parameter("roughness_value", src.roughness)
+				sm.set_shader_parameter("kind", info[0])
+				sm.set_shader_parameter("edge_color", info[1])
+				sm.set_shader_parameter("wear", wear)
+				sm.set_shader_parameter("seed", pattern_seed)
+				cache[src.resource_name] = sm
+			(mi as MeshInstance3D).set_surface_override_material(k, cache[src.resource_name])
 
 
 static func find_muzzle(root: Node3D) -> Node3D:

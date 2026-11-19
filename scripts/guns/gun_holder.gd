@@ -88,7 +88,7 @@ func _equip() -> void:
 	var g := gun()
 	if g == null:
 		return
-	_view = GunVisual.build(g.type)
+	_view = GunVisual.build_instance(g)
 	add_child(_view)
 	_muzzle = GunVisual.find_muzzle(_view)
 	# モデルに照準点(ads_eye)があれば、構えたときに照準線が画面中央に来るよう位置を決める
