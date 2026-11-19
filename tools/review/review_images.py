@@ -145,7 +145,7 @@ def show_usage():
     with open(USAGE_LOG, encoding="utf-8") as f:
         for line in f:
             e = json.loads(line)
-            if "error" in e:
+            if "error" in e or e.get("kind") != "review":  # Gemini の評価の行だけ数える
                 continue
             n += 1
             tin += e.get("input_tokens", 0)
