@@ -53,5 +53,7 @@ enum FireMode { AUTO, SEMI, CHARGE }
 @export var mag_shape := 0
 ## 構えたときの目から照門までの距離(m)。照門が銃の後ろ寄りなら短く、前寄り(AK など)なら長く
 @export var ads_eye_dist := 0.2
+## 撃ったときの銃口の跳ね上がり(見た目だけ)。拳銃・マグナムは大きく
+@export var kick_flip := 0.25
 ## 腰だめで持つ位置(カメラから見て右・下・前)。拳銃のように小さい銃は近く高めに
 @export var hip_pos := Vector3(0.15, -0.21, -0.42)

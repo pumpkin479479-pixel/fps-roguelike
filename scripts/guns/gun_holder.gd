@@ -200,7 +200,7 @@ func _process(dt: float) -> void:
 		var kick := _kick * lerpf(1.0, 0.3, _aim_t)
 		_view.position = Vector3(0, 0, kick * 0.08)
 		rotation = HIP_ROT * (1.0 - _aim_t)
-		_view.rotation = Vector3(kick * 0.25 + (reload_rot.x if reloading else 0.0) + _ads_pitch * _aim_t,
+		_view.rotation = Vector3(kick * g.type.kick_flip + (reload_rot.x if reloading else 0.0) + _ads_pitch * _aim_t,
 			reload_rot.y if reloading else 0.0, reload_rot.z if reloading else 0.0)
 		_update_bolt(dt, g)
 		if _rig:

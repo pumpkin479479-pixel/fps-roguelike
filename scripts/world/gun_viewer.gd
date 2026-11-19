@@ -332,7 +332,7 @@ func _process(dt: float) -> void:
 		pose_rot = pose[0]
 		pose_off = pose[1]
 	_view.position = Vector3(0, 0, _kick * 0.04) + pose_off
-	_view.rotation = Vector3(_kick * 0.35, 0, 0) + pose_rot
+	_view.rotation = Vector3(_kick * _gun.type.kick_flip * 1.4, 0, 0) + pose_rot
 	_update_bolt(dt)
 	if _rig:
 		_rig.update(dt, self, Vector3.ZERO, _rng)

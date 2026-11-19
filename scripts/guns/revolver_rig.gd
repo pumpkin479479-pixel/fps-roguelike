@@ -137,8 +137,8 @@ func _update_reload(casing_parent: Node, player_vel: Vector3, rng: RandomNumberG
 		_hammer.rotation.x = 0.0   # 振り出す間は撃鉄を寝かせる
 	# 振り出す(0.05〜0.15)、戻す(0.80〜0.90)
 	_set_crane(CRANE_SWING * (_ramp(t, 0.05, 0.15) - _ramp(t, 0.80, 0.90)))
-	# 押し棒で薬莢を押し出す(0.18〜0.24)、押し棒が戻る(0.26〜0.32)
-	var push := EJECT_TRAVEL * (_ramp(t, 0.18, 0.24) - _ramp(t, 0.26, 0.32))
+	# 押し棒で薬莢を押し出す(0.16〜0.24)、押し棒が戻る(0.28〜0.34)。そのあと空のシリンダーを少し見せる
+	var push := EJECT_TRAVEL * 1.3 * (_ramp(t, 0.16, 0.24) - _ramp(t, 0.28, 0.34))
 	if _ejector:
 		_ejector.position = _ejector_rest + Vector3(0, 0, push)
 	if not _ejected:
@@ -155,9 +155,9 @@ func _update_reload(casing_parent: Node, player_vel: Vector3, rng: RandomNumberG
 				GunHolder.Casing.spawn_dropped(casing_parent, rnd.global_transform, player_vel, rng, full)
 				rnd.visible = false
 		return
-	# 新しい弾を後ろから差し込む(0.42〜0.66)
-	var load_k := _ramp(t, 0.42, 0.66)
-	var show := t >= 0.36
+	# 新しい弾を後ろから差し込む(0.48〜0.70)
+	var load_k := _ramp(t, 0.48, 0.70)
+	var show := t >= 0.44
 	for k in CHAMBERS:
 		if _rounds[k] == null:
 			continue
@@ -170,8 +170,8 @@ func _update_reload(casing_parent: Node, player_vel: Vector3, rng: RandomNumberG
 ## リロード中の銃の姿勢(回転, 位置のずれ)。排莢は銃口を上へ、装填は銃口を下へ向ける
 func reload_pose() -> Array:
 	var t := _reload_t
-	var up := _ramp(t, 0.0, 0.12) * (1.0 - _ramp(t, 0.30, 0.40))
-	var down := _ramp(t, 0.30, 0.40) * (1.0 - _ramp(t, 0.85, 1.0))
+	var up := _ramp(t, 0.0, 0.12) * (1.0 - _ramp(t, 0.34, 0.44))
+	var down := _ramp(t, 0.34, 0.44) * (1.0 - _ramp(t, 0.85, 1.0))
 	var tilt := _ramp(t, 0.0, 0.12) * (1.0 - _ramp(t, 0.85, 1.0))
 	var rot := Vector3(0.9 * up - 0.8 * down, 0.35 * tilt, -0.25 * tilt)
 	var off := Vector3(-0.10, 0.07 * up + 0.05 * down, 0.05) * tilt
