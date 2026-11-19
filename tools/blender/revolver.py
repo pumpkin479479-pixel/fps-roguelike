@@ -145,9 +145,14 @@ g.cut(lug, g.box("c", (0, (0.068 + ROD_Y1 + 0.002) / 2, CYL_AXIS_Z), (0.03, ROD_
 # 照星(リブの上のランプ)
 front_sight = g.prism("front_sight", [(FRONT_Y - 0.016, RIB_TOP - 0.0005), (FRONT_Y - 0.002, POST_TIP), (FRONT_Y + 0.004, POST_TIP),
                                       (FRONT_Y + 0.006, RIB_TOP - 0.0005)], POST_W, "steel_worn", bevel=0.0006)
-sight_dot = g.prism("front_sight_insert", [(FRONT_Y - 0.0050, POST_TIP - 0.0040), (FRONT_Y - 0.0020, POST_TIP + 0.0002),
-                                           (FRONT_Y + 0.0010, POST_TIP + 0.0002), (FRONT_Y + 0.0010, POST_TIP - 0.0040)],
-                    POST_W + 0.0004, "sight_orange")
+# 照星のオレンジ: 後ろ側の斜面の上 35% に、斜面から少し浮かせた板として貼る(構えたとき縦に数 px 見えるように)
+_ay, _az = FRONT_Y - 0.016, RIB_TOP - 0.0005
+_by, _bz = FRONT_Y - 0.002, POST_TIP
+_cy, _cz = _by - (_by - _ay) * 0.35, _bz - (_bz - _az) * 0.35
+_l = math.hypot(_by - _ay, _bz - _az)
+_ny, _nz = -(_bz - _az) / _l * 0.0004, (_by - _ay) / _l * 0.0004   # 斜面の外向き(後ろ上)へ 0.4mm
+sight_dot = g.prism("front_sight_insert", [(_cy + _ny, _cz + _nz), (_by + _ny, _bz + _nz + 0.0002), (FRONT_Y + 0.0015, POST_TIP + 0.0002),
+                                           (FRONT_Y + 0.0015, _cz)], POST_W + 0.0004, "sight_orange")
 bore = g.tube_y("bore_dark", BARREL_Y1 - 0.011, BARREL_Y1 - 0.009, 0.0046, "recess", z=BORE_Z, segments=20)
 barrel_all = g.join("barrel", [barrel, rib, lug, bore, front_sight, sight_dot])
 

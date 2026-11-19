@@ -1,7 +1,8 @@
 class_name RevolverRig
 extends RefCounted
 ## リボルバーの可動部を動かす(モデルに "cylinder" があるときに GunHolder が作る)。
-##   撃つ: 撃鉄が落ちる・引き金が下がる → 撃鉄が起き、シリンダーが 60° 回って次の弾が上に来る
+##   撃つ: 撃鉄が一瞬起きて落ちる(フレームに密着)・引き金が下がる → シリンダーが 60° 回って次の弾が上に来る
+##         待機中の撃鉄は前に倒れている(ダブルアクション)
 ##   リロード: クレーンごとシリンダーを左へ振り出す → 押し棒で薬莢を押し出して落とす
 ##             → 新しい弾を後ろから差し込む → シリンダーを戻す
 ## 部品の名前と回転の向きは tools/blender/revolver.py と合わせている。
@@ -71,7 +72,7 @@ func set_loaded(ammo: int) -> void:
 		if _rounds[k]:
 			_rounds[k].visible = true
 	if _hammer:
-		_hammer.rotation.x = HAMMER_COCKED
+		_hammer.rotation.x = 0.0
 
 
 func on_fire(rpm: float) -> void:
@@ -110,11 +111,12 @@ func update(dt: float, casing_parent: Node, player_vel: Vector3, rng: RandomNumb
 		_update_reload(casing_parent, player_vel, rng)
 		return
 	_fire_t = minf(1.0, _fire_t + dt / _cycle)
-	# 0〜0.2: 撃鉄が落ちて引き金が引かれている / 0.2〜1: 撃鉄が起き、シリンダーが回る
+	# 0〜0.12: 起きていた撃鉄が落ちる / 0.2〜1: 引き金が戻り、シリンダーが回る
+	var fall := clampf(_fire_t / 0.12, 0.0, 1.0)
 	var k := clampf((_fire_t - 0.2) / 0.8, 0.0, 1.0)
 	var e := k * k * (3.0 - 2.0 * k)
 	if _hammer:
-		_hammer.rotation.x = HAMMER_COCKED * e
+		_hammer.rotation.x = HAMMER_COCKED * (1.0 - fall) * (1.0 - fall)
 	if _trigger:
 		_trigger.rotation.x = TRIGGER_PULL * (1.0 - e)
 	_cylinder.rotation.z = lerpf(_turn_from, _index * TAU / CHAMBERS, e)
