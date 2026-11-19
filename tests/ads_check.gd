@@ -16,8 +16,12 @@ func _ready() -> void:
 	p.holder.give(GunInstance.roll(load("res://data/guns/%s.tres" % id), 1))
 	p.holder.switch_to(1)
 	Input.action_press("aim")
-	for _k in 90:
+	# 速いPCでは 90 フレームが一瞬で終わり、構えの動きが途中になる。最低 2 秒は待つ
+	var start := Time.get_ticks_msec()
+	var k := 0
+	while k < 90 or Time.get_ticks_msec() - start < 2000:
 		await get_tree().process_frame
+		k += 1
 	var cam := p.camera
 	var view := p.holder.get_child(p.holder.get_child_count() - 1) as Node3D
 	var eye := view.find_child("ads_eye", true, false) as Node3D

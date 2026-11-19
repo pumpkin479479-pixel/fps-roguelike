@@ -173,7 +173,7 @@ func reload_pose() -> Array:
 	var up := _ramp(t, 0.0, 0.12) * (1.0 - _ramp(t, 0.30, 0.40))
 	var down := _ramp(t, 0.30, 0.40) * (1.0 - _ramp(t, 0.85, 1.0))
 	var tilt := _ramp(t, 0.0, 0.12) * (1.0 - _ramp(t, 0.85, 1.0))
-	var rot := Vector3(0.9 * up - 0.45 * down, 0.35 * tilt, -0.25 * tilt)
+	var rot := Vector3(0.9 * up - 0.8 * down, 0.35 * tilt, -0.25 * tilt)
 	var off := Vector3(-0.10, 0.07 * up + 0.05 * down, 0.05) * tilt
 	return [rot, off]
 
