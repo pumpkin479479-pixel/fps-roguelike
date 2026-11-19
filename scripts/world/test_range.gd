@@ -103,6 +103,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				if is_instance_valid(e):
 					e.queue_free()
 			_storm_enemies.clear()
+	elif event.is_action_pressed("gun_viewer"):
+		# 持っている銃を観察台で見る
+		var g := _player.holder.gun()
+		GunViewer.start_gun_id = g.type.id if g else ""
+		get_tree().change_scene_to_file.call_deferred("res://scenes/gun_viewer.tscn")
 	elif event.is_action_pressed("spawn_gun"):
 		var t := gun_types[_rng.randi() % gun_types.size()]
 		var p := _player.global_position - _player.global_basis.z * 2.0

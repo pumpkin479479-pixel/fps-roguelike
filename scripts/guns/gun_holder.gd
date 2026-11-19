@@ -284,12 +284,12 @@ func _spread_dir(dir: Vector3, spread: float) -> Vector3:
 class Beam extends MeshInstance3D:
 	var _t := 0.0
 
-	static func spawn(parent: Node, from: Vector3, to: Vector3, color: Color) -> void:
+	static func spawn(parent: Node, from: Vector3, to: Vector3, color: Color, radius := 0.05) -> void:
 		var b := Beam.new()
 		var len := from.distance_to(to)
 		var mesh := CylinderMesh.new()
-		mesh.top_radius = 0.05
-		mesh.bottom_radius = 0.05
+		mesh.top_radius = radius
+		mesh.bottom_radius = radius
 		mesh.height = len
 		mesh.radial_segments = 6
 		mesh.rings = 1

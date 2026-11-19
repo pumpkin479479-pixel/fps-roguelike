@@ -27,6 +27,7 @@ const ACTIONS := {
 	"toggle_help": [KEY_F1],
 	"bullet_storm": [KEY_F3],
 	"spawn_gun": [KEY_F4],
+	"gun_viewer": [KEY_F5],
 	"ui_release_mouse": [KEY_ESCAPE],
 }
 
