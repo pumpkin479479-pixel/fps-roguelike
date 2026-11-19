@@ -111,8 +111,8 @@ func update(dt: float, casing_parent: Node, player_vel: Vector3, rng: RandomNumb
 		_update_reload(casing_parent, player_vel, rng)
 		return
 	_fire_t = minf(1.0, _fire_t + dt / _cycle)
-	# 0〜0.12: 起きていた撃鉄が落ちる / 0.2〜1: 引き金が戻り、シリンダーが回る
-	var fall := clampf(_fire_t / 0.12, 0.0, 1.0)
+	# 0〜0.3: 起きていた撃鉄が落ちる / 0.2〜1: 引き金が戻り、シリンダーが回る
+	var fall := clampf(_fire_t / 0.3, 0.0, 1.0)  # 撃鉄が落ちるのを目で追える長さ(約 75ms)
 	var k := clampf((_fire_t - 0.2) / 0.8, 0.0, 1.0)
 	var e := k * k * (3.0 - 2.0 * k)
 	if _hammer:
