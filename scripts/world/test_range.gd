@@ -35,7 +35,12 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--start-gun="):
 			start_id = a.trim_prefix("--start-gun=")
-	_player.holder.give(GunInstance.roll(_find_type(start_id), _rng.randi()))
+	if GunViewer.carry_gun:
+		# 観察台から戻ったときは、見ていた銃をそのまま持つ
+		_player.holder.give(GunViewer.carry_gun)
+		GunViewer.carry_gun = null
+	else:
+		_player.holder.give(GunInstance.roll(_find_type(start_id), _rng.randi()))
 
 	var hud := preload("res://scripts/ui/hud.gd").new()
 	hud.setup(_player, _bm, self)
@@ -107,6 +112,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# 持っている銃を観察台で見る
 		var g := _player.holder.gun()
 		GunViewer.start_gun_id = g.type.id if g else ""
+		GunViewer.carry_gun = g
 		get_tree().change_scene_to_file.call_deferred("res://scenes/gun_viewer.tscn")
 	elif event.is_action_pressed("spawn_gun"):
 		var t := gun_types[_rng.randi() % gun_types.size()]

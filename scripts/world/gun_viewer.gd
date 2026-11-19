@@ -10,13 +10,15 @@ extends Node3D
 ##
 ## 起動(開発用):
 ##   godot --path . res://scenes/gun_viewer.tscn -- --gun=revolver357 [--spin=30] [--auto] [--slow=0.25]
-##   撮影: --shots=DIR [--angles=0,90,180,270] [--times=0.5,1.2,2.0]
+##   撮影: --shots=DIR [--angles=0,90,180,270] [--times=0.5,1.2,2.0] [--time-angle=150]
 ##     --angles: 撃たずに、その角度(度。0 = 銃の右側)から順に撮る → DIR/angle_<角度>.png
 ##     --times : 起動からの秒数ごとに撮る(--auto と合わせると動きの途中を撮れる)→ DIR/time_<秒>.png
 ##   どちらも撮り終えたら終了する。--screenshot=out.png(1枚だけ)も使える。
 
 ## 試射場から開くとき、持っていた銃の id をここに入れておく
 static var start_gun_id := ""
+## 試射場で持っていた銃そのもの(性能・見た目をそのまま観察台へ持ち込み、戻るときに持ち帰る)
+static var carry_gun: GunInstance
 
 const GUN_HEIGHT := 1.3
 const SLOW := 0.25
@@ -102,6 +104,7 @@ func _ready() -> void:
 	var shots := ""
 	var angles: Array[float] = []
 	var times: Array[float] = []
+	var time_angle := NAN
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--gun="):
 			id = a.trim_prefix("--gun=")
@@ -117,6 +120,8 @@ func _ready() -> void:
 		elif a.begins_with("--angles="):
 			for s in a.trim_prefix("--angles=").split(","):
 				angles.append(float(s))
+		elif a.begins_with("--time-angle="):
+			time_angle = float(a.trim_prefix("--time-angle="))
 		elif a.begins_with("--times="):
 			for s in a.trim_prefix("--times=").split(","):
 				times.append(float(s))
@@ -127,7 +132,7 @@ func _ready() -> void:
 	_update_cam()
 	if shots != "":
 		_scripted = true
-		_run_shots(shots, angles, times)
+		_run_shots(shots, angles, times, time_angle)
 
 
 func _load_types() -> void:
@@ -196,7 +201,10 @@ func _equip() -> void:
 	if _view:
 		_view.queue_free()
 	var t := _types[_type_idx]
-	_gun = GunInstance.roll(t, 7)
+	if carry_gun and carry_gun.type == t:
+		_gun = carry_gun
+	else:
+		_gun = GunInstance.roll(t, 7)
 	_view = GunVisual.build_instance(_gun)
 	_mount.add_child(_view)
 	# 銃の真ん中あたりを見る(モデルの原点はグリップ)
@@ -283,6 +291,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_view(PI * 0.5, 0.2)
 			KEY_ESCAPE:
 				Engine.time_scale = 1.0
+				carry_gun = _gun  # 今見ている銃を持って戻る
 				get_tree().change_scene_to_file("res://scenes/test_range.tscn")
 
 
@@ -387,7 +396,7 @@ func _update_label() -> void:
 		+ "T スロー / H リロード時の傾きも見せる / 1〜4 右・左・上・後ろ / Esc 試射場へ"
 
 
-func _run_shots(dir: String, angles: Array[float], times: Array[float]) -> void:
+func _run_shots(dir: String, angles: Array[float], times: Array[float], time_angle: float) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	_label.visible = false
 	var start := Time.get_ticks_msec()
@@ -397,6 +406,9 @@ func _run_shots(dir: String, angles: Array[float], times: Array[float]) -> void:
 		_update_cam()
 		await _wait_real(0.2)
 		await _save("%s/angle_%03d.png" % [dir, int(a)])
+	# 時刻ごとの写真の角度: --time-angle、無ければ左斜め後ろ(150°。リボルバーの振り出しが見える)
+	_yaw = deg_to_rad(time_angle if not is_nan(time_angle) else 150.0)
+	_update_cam()
 	for s in times:
 		while (Time.get_ticks_msec() - start) / 1000.0 < s:
 			await get_tree().process_frame
