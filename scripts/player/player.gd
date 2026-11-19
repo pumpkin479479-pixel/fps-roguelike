@@ -190,7 +190,7 @@ func _update_camera(dt: float) -> void:
 	var hs := Vector2(velocity.x, velocity.z).length()
 	var fov := BASE_FOV + clampf((hs - WALK_SPEED) * 0.9, 0.0, 14.0)
 	if holder.aiming:
-		fov -= 25.0
+		fov -= 33.0  # 構えると少しズーム
 	camera.fov = lerpf(camera.fov, fov, clampf(dt * 10.0, 0, 1))
 	var tilt := deg_to_rad(-6.0) if state == State.SLIDE else 0.0
 	camera.rotation.z = lerpf(camera.rotation.z, tilt, clampf(dt * 10.0, 0, 1))
