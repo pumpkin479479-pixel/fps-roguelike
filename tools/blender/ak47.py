@@ -68,7 +68,7 @@ EAR_X = (at_front(SIGHT_PX["ear_gap"]) / 2) / FAT + EAR_HALF_T   # 耳の板の�
 NOTCH_TOP = 0.0700   # 照準線の高さ。上蓋から十分上げて、構えたとき上蓋が視界を塞がないように
 POST_TIP = NOTCH_TOP + 0.004
 print(f"[ak47] 照準: 溝 幅{NOTCH_W * FAT * 1000:.1f} 深さ{NOTCH_DEPTH * 1000:.1f} 照門幅{REAR_W * FAT * 1000:.1f} "
-      f"柱 太さ{POST_R * 2 * FAT * 1000:.1f} 耳の空き{(EAR_X - EAR_HALF_T) * 2 * FAT * 1000:.1f} 厚さ{EAR_HALF_T * 2 * FAT * 1000:.1f} (mm)")
+      f"柱 太さ{POST_R * 2 * FAT * 1000:.1f} 耳の空き{(EAR_X + EAR_HALF_T * 0.7 - EAR_HALF_T) * 2 * FAT * 1000:.1f} 厚さ{EAR_HALF_T * 2 * FAT * 1000:.1f} (mm)")
 
 
 def sec(y, zc, w, h, r, x=0.0, seg=2):
