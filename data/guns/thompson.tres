@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="GunType" format=3]
+
+[ext_resource type="Script" path="res://scripts/guns/gun_type.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "thompson"
+display_name = "タイプライター"
+reference = "トンプソン M1928"
+era = 2
+fire_mode = 0
+damage = 11.0
+rpm = 750.0
+magazine = 50
+reload_time = 2.6
+pellets = 1
+spread_deg = 3.0
+bullet_speed = 55.0
+bullet_size = 0.22
+bullet_color = Color(1, 0.7, 0.3, 1)
+recoil = 0.7
+weight = 4.9
+placeholder_dims = Vector3(0.42, 0.12, 0.27)
+body_color = Color(0.2, 0.2, 0.22, 1)
+accent_color = Color(0.45, 0.26, 0.13, 1)
+mag_shape = 1

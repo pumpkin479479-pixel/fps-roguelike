@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="GunType" format=3]
+
+[ext_resource type="Script" path="res://scripts/guns/gun_type.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "railgun"
+display_name = "ライトニングRG"
+reference = "レールガン(架空)"
+era = 5
+fire_mode = 2
+damage = 160.0
+rpm = 60.0
+magazine = 5
+reload_time = 2.8
+pellets = 1
+spread_deg = 0.0
+bullet_speed = 999.0
+bullet_size = 0.4
+bullet_color = Color(0.4, 0.8, 1, 1)
+recoil = 5.0
+weight = 8.5
+charge_time = 0.8
+hitscan = true
+pierce = -1
+placeholder_dims = Vector3(0.55, 0.16, 0.5)
+body_color = Color(0.75, 0.78, 0.82, 1)
+accent_color = Color(0.2, 0.8, 1, 1)
+mag_shape = 3

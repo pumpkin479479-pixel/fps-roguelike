@@ -22,3 +22,7 @@ desktop.ini
 .vscode/
 *.blend1
 *.blend2
+tools/blender/renders/
+__pycache__/
+*.pyc
+tools/review/out/
