@@ -25,6 +25,9 @@ var _semi_ready := true
 var _view: Node3D
 var _muzzle: Node3D
 var _ads_pos := ADS_POS
+## 構えたとき、照門と照星を結ぶ線が水平になるように銃を傾ける角度(ラジアン)
+var _ads_pitch := 0.0
+var _aim_t := 0.0
 var _flash: OmniLight3D
 var _kick := 0.0
 var _bm: BulletManager
@@ -90,8 +93,15 @@ func _equip() -> void:
 	_muzzle = GunVisual.find_muzzle(_view)
 	# モデルに照準点(ads_eye)があれば、構えたときに照準線が画面中央に来るよう位置を決める
 	var eye := _view.find_child("ads_eye", true, false) as Node3D
+	var post := _view.find_child("front_post_tip", true, false) as Node3D
+	_ads_pitch = 0.0
 	if eye:
-		_ads_pos = Vector3(0, 0, -ADS_EYE_DIST) - (_view.global_transform.affine_inverse() * eye.global_transform).origin
+		var inv := _view.global_transform.affine_inverse()
+		var eye_l := (inv * eye.global_transform).origin
+		if post:
+			var d := (inv * post.global_transform).origin - eye_l
+			_ads_pitch = -atan2(d.y, -d.z)
+		_ads_pos = Vector3(0, 0, -ADS_EYE_DIST) - Basis(Vector3.RIGHT, _ads_pitch) * eye_l
 	else:
 		_ads_pos = ADS_POS
 	# 重い銃ほど持ち替えが遅い
@@ -164,7 +174,8 @@ func _process(dt: float) -> void:
 	_kick = lerpf(_kick, 0.0, clampf(dt * 14.0, 0, 1))
 	if _view:
 		_view.position = Vector3(0, 0, _kick * 0.08)
-		_view.rotation = Vector3(_kick * 0.25 + (0.6 if reloading else 0.0), 0, (0.5 if reloading else 0.0))
+		_aim_t = move_toward(_aim_t, 1.0 if aiming else 0.0, dt * 8.0)
+		_view.rotation = Vector3(_kick * 0.25 + (0.6 if reloading else 0.0) + _ads_pitch * _aim_t, 0, (0.5 if reloading else 0.0))
 		if g.type.fire_mode == GunType.FireMode.CHARGE:
 			_view.position.x = _rng.randf_range(-1, 1) * 0.004 * charge
 	_flash.light_energy = maxf(0.0, _flash.light_energy - dt * 60.0)

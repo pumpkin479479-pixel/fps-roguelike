@@ -22,8 +22,8 @@ from mathutils import Vector
 
 # 共通パレット: 名前 → (色, 金属感, 粗さ)
 PALETTE = {
-    "steel": ((0.035, 0.037, 0.042), 0.85, 0.42),   # 黒染めの鉄
-    "steel_worn": ((0.08, 0.08, 0.085), 0.9, 0.35),  # 擦れた鉄(角の部品)
+    "steel": ((0.055, 0.057, 0.062), 0.55, 0.45),   # 黒染めの鉄(金属感を強くしすぎるとゲーム内で真っ黒になる)
+    "steel_worn": ((0.10, 0.10, 0.105), 0.65, 0.38),  # 擦れた鉄(小部品)
     "wood": ((0.26, 0.085, 0.025), 0.0, 0.55),       # 赤みのある木(ラッカー仕上げ)
     "wood_dark": ((0.14, 0.05, 0.018), 0.0, 0.6),
     "bakelite": ((0.16, 0.045, 0.02), 0.0, 0.45),    # 樹脂(オレンジがかった茶)
@@ -328,8 +328,7 @@ def render_views(out_dir, prefix, ads_eye=None, front_post=None, size=(1200, 675
         "top": dict(ortho=L * 1.08, loc=c + Vector((0, 0, 1)), look=c, up=Vector((0, 1, 0))),
         "front_quarter": dict(fov=30, loc=c + Vector((-1.0, 1.3, 0.55)) * L, look=c),
         "rear_quarter": dict(fov=30, loc=c + Vector((-0.9, -1.3, 0.7)) * L, look=c),
-        # ゲームの腰だめ表示と同じ位置関係(Godot の HIP_POS)と縦の視野角 85 度
-        "first_person": dict(fov=85, vfov=True, loc=Vector((-0.20, -0.50, 0.20)), look=Vector((-0.20, 1.0, 0.20))),
+        # 一人称の見え方はゲーム内のスクリーンショット(--screenshot)で確かめる
     }
     if ads_eye is not None and front_post is not None:
         line = (front_post - ads_eye).normalized()

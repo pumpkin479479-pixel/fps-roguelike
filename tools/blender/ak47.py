@@ -33,6 +33,7 @@ OFF = Vector((0.0, 0.02, 0.03))  # 生の座標 → 原点(グリップ上端)
 BARREL_Z = 0.008
 RR = g.rounded_rect
 
+g.PALETTE["steel_bright"] = ((0.16, 0.16, 0.17), 0.7, 0.35)
 g.PALETTE["recess"] = ((0.010, 0.010, 0.012), 0.5, 0.7)
 g.reset_scene()
 
@@ -43,26 +44,47 @@ def sec(y, zc, w, h, r, x=0.0, seg=2):
 
 
 # ======================= レシーバー(本体) =======================
-receiver = g.loft("receiver_body", [
-    sec(-0.131, -0.006, 0.030, 0.044, 0.004),
-    sec(-0.125, -0.002, 0.033, 0.056, 0.004),
-    sec(0.135, -0.002, 0.033, 0.056, 0.004),
-], "steel", smooth_angle=35)
-# マガジン上の削り込み(左右、深さ 2mm)と排莢口(右、壁を抜く)を実際にくり抜く
+# 後端の下側は斜めに切れ上がり(約15度)、そこへストックが差し込まれる
+receiver = g.prism("receiver_body", [
+    (-0.128, 0.026), (-0.128, -0.006), (-0.118, -0.030), (0.135, -0.030), (0.135, 0.026),
+], 0.033, "steel")
+# 削り出しレシーバーの肉抜き(左右、長さ 80mm・高さ 17mm・深さ 3mm、前端は半円)
 for sx in (-1, 1):
-    g.cut(receiver, g.box("c", (sx * 0.0175, 0.090, -0.009), (0.004, 0.064, 0.017), "recess", bevel=0.002))
-g.cut(receiver, g.box("c", (0.0150, 0.052, 0.014), (0.010, 0.088, 0.017), "recess", bevel=0.002))
-g.bevel(receiver, 0.0012, 2)
-# 排莢口の奥に見えるボルトキャリアとボルト
-bolt_carrier = g.loft("bolt_carrier_visible", [sec(0.006, 0.014, 0.022, 0.016, 0.004, seg=3), sec(0.098, 0.014, 0.022, 0.016, 0.004, seg=3)], "steel_worn")
+    # 重なった形を1つにまとめてから削ると失敗するので、箱と半円を順に削る
+    g.cut(receiver, g.box("c", (sx * 0.0175, 0.085, -0.010), (0.006, 0.072, 0.017), "recess"))
+    g.cut(receiver, g.tube_x("c2", (sx * 0.0175, 0.121, -0.010), 0.006, 0.0085, "recess", segments=20))
+# 排莢口(右、長さ 100mm・高さ 20mm)。壁を抜いて中のボルトキャリアを見せる
+g.cut(receiver, g.box("c", (0.0150, 0.050, 0.015), (0.010, 0.100, 0.020), "recess"))
+g.bevel(receiver, 0.0010, 2)
+# 排莢口の奥に見えるボルトキャリア(少し明るい鉄)とボルト
+bolt_carrier = g.loft("bolt_carrier_visible", [sec(0.000, 0.015, 0.024, 0.018, 0.004, seg=3), sec(0.098, 0.015, 0.024, 0.018, 0.004, seg=3)], "steel_bright")
 bolt_face = g.tube_y("bolt_head", 0.098, 0.112, 0.0065, "steel", z=0.012, segments=16)
 # ダストカバー(上が丸い)と後端のボタン
+def dc_section(w, h_side, top_w, h_top):
+    """ダストカバーの断面: 上面は幅 top_w の平らな面、そこから左右へ丸く落ちる。"""
+    pts = [(w / 2, 0.0), (w / 2, h_side)]
+    for k in range(1, 4):
+        a = math.pi / 2 * k / 4
+        pts.append((top_w / 2 + (w - top_w) / 2 * math.cos(a), h_side + (h_top - h_side) * math.sin(a)))
+    pts += [(top_w / 2, h_top), (-top_w / 2, h_top)]
+    for k in range(3, 0, -1):
+        a = math.pi / 2 * k / 4
+        pts.append((-top_w / 2 - (w - top_w) / 2 * math.cos(a), h_side + (h_top - h_side) * math.sin(a)))
+    pts += [(-w / 2, h_side), (-w / 2, 0.0)]
+    return pts
+
+
 dust_cover = g.loft("dust_cover", [
-    g.ring_y(-0.130, 0.022, g.arch(0.030, 0.004, 0.010)),
-    g.ring_y(-0.124, 0.022, g.arch(0.035, 0.006, 0.015)),
-    g.ring_y(0.106, 0.022, g.arch(0.035, 0.006, 0.015)),
-    g.ring_y(0.114, 0.022, g.arch(0.033, 0.006, 0.013)),
-], "steel", smooth_angle=50)
+    g.ring_y(-0.131, 0.022, dc_section(0.029, 0.003, 0.014, 0.012)),
+    g.ring_y(-0.125, 0.022, dc_section(0.035, 0.005, 0.018, 0.020)),
+    g.ring_y(0.104, 0.022, dc_section(0.035, 0.005, 0.018, 0.020)),
+    g.ring_y(0.112, 0.022, dc_section(0.033, 0.005, 0.016, 0.018)),
+], "steel", smooth_angle=30)
+# 後部の段(ダストカバー後端の補強の盛り上がり)
+dc_step = g.loft("dust_cover_step", [
+    g.ring_y(-0.124, 0.022, dc_section(0.0356, 0.005, 0.0186, 0.0205)),
+    g.ring_y(-0.100, 0.022, dc_section(0.0356, 0.005, 0.0186, 0.0205)),
+], "steel", smooth_angle=30)
 spring_button = g.tube_y("spring_button", -0.138, -0.128, 0.0045, "steel_worn", z=0.030, segments=16)
 g.bevel(spring_button, 0.0008, 2)
 # リアサイトの台(前へ細くなる)
@@ -72,10 +94,13 @@ rs_block = g.loft("rear_sight_block", [
     sec(0.185, 0.017, 0.026, 0.032, 0.008),
 ], "steel", smooth_angle=40)
 # リアサイトのリーフ(前で蝶番、後端に U 字の切り欠き)とスライダー
-leaf = g.prism("rs_leaf", [(0.118, 0.0475), (0.118, 0.0505), (0.172, 0.0505), (0.172, 0.0475)], 0.014, "steel_worn")
-# 照門: 後端の板に U 字の切り欠きを実際に開ける(幅 2.4mm、深さ 3mm)
-notch = g.box("rs_notch", (0, 0.121, 0.0535), (0.014, 0.004, 0.008), "steel_worn")
-g.cut(notch, g.box("c", (0, 0.121, 0.0565), (0.0024, 0.01, 0.006), "recess"))
+# 照尺板: 厚さ 2.5mm、幅 16mm、前の蝶番から後ろへ少し上がりながら伸びる
+leaf = g.prism("rs_leaf", [(0.119, 0.0480), (0.119, 0.0505), (0.172, 0.0490), (0.172, 0.0465)], 0.016, "steel_worn")
+g.bevel(leaf, 0.0005, 1)
+# 照門: 後端の立ち上がり(前後 4mm・高さ 6mm)の上面中央に、幅 1.8mm・深さ 2.2mm の U 字の溝
+notch = g.box("rs_notch", (0, 0.1205, 0.0535), (0.016, 0.004, 0.006), "steel_worn")
+g.cut(notch, g.box("c1", (0, 0.1205, 0.0570), (0.0018, 0.01, 0.0026), "recess"))
+g.cut(notch, g.tube_y("c2", 0.110, 0.131, 0.0009, "recess", z=0.0556, segments=12))
 g.bevel(notch, 0.0004, 1)
 leaf_rib = g.box("rs_leaf_rib", (0, 0.145, 0.0512), (0.004, 0.050, 0.0015), "steel_worn")
 slider = g.box("rs_slider", (0, 0.146, 0.0505), (0.020, 0.010, 0.006), "steel", bevel=0.001)
@@ -85,10 +110,11 @@ gas_latch = g.box("gas_tube_latch", (0.0155, 0.172, 0.032), (0.004, 0.016, 0.006
 # トリガーガード、マガジンキャッチ
 guard = g.sweep_yz("trigger_guard", [(0, -0.004, -0.029), (0, -0.002, -0.046), (0, 0.006, -0.056), (0, 0.020, -0.058),
                                       (0, 0.050, -0.058), (0, 0.062, -0.054), (0, 0.067, -0.044), (0, 0.068, -0.029)],
-                   RR(0.010, 0.0035, 0.0015, 2), "steel")
+                   RR(0.012, 0.003, 0.0013, 2), "steel")
 guard_bottom = guard
 guard_front = g.box("guard_rivet", (0, 0.064, -0.031), (0.011, 0.004, 0.004), "steel")
-mag_catch = g.prism("mag_catch", [(0.069, -0.030), (0.077, -0.030), (0.081, -0.055), (0.072, -0.058)], 0.013, "steel_worn", bevel=0.001)
+mag_catch = g.prism("mag_catch", [(0.069, -0.030), (0.078, -0.030), (0.084, -0.047), (0.086, -0.058), (0.074, -0.060), (0.072, -0.046)],
+                    0.011, "steel_worn", bevel=0.0012)
 # ピストルグリップ(斜め下後ろへ伸びる。断面は角丸)
 gt, gb = Vector((0, -0.021, -0.026)), Vector((0, -0.062, -0.146))
 axis = (gb - gt).normalized()
@@ -109,7 +135,7 @@ pins = []
 for side in (-1, 1):
     for (py, pz) in [(-0.008, -0.016), (0.018, -0.012), (0.040, -0.012)]:
         pins.append(g.tube_x(f"pin_{side}_{py}", (side * 0.0168, py, pz), 0.002, 0.0025, "steel_worn"))
-receiver_parts = [receiver, bolt_carrier, bolt_face, dust_cover, spring_button, rs_block, leaf,
+receiver_parts = [receiver, bolt_carrier, bolt_face, dust_cover, dc_step, spring_button, rs_block, leaf,
                   notch, leaf_rib, slider, slider_btn, hinge, gas_latch, guard_bottom, guard_front, mag_catch,
                   grip, selector, selector_tab, selector_pivot] + pins
 
@@ -121,13 +147,26 @@ g.cut(muzzle_nut, g.tube_y("c", 0.510, 0.53, 0.0043, "recess", z=BARREL_Z, segme
 # フロントサイト: 銃身を抱く台、左右の耳、中央の柱
 fs_base = g.loft("fs_base", [sec(0.462, 0.008, 0.024, 0.030, 0.008), sec(0.496, 0.008, 0.024, 0.030, 0.008)], "steel")
 fs_tower = g.prism("fs_tower", [(0.468, 0.020), (0.471, 0.040), (0.487, 0.040), (0.490, 0.020)], 0.008, "steel", bevel=0.001)
-ears = [g.prism(f"fs_ear_{s}", [(0.464, 0.020), (0.469, 0.066), (0.489, 0.066), (0.494, 0.020)], 0.0028, "steel", x=s * 0.0085)
+def ear_section(side, top):
+    """照星の耳の断面(正面から見た形): 下から外へふくらみ、上で内側へ曲がる。厚さ 2.5mm。"""
+    outer, inner = [], []
+    for k in range(7):
+        t = k / 6
+        z = 0.018 + (top - 0.018) * t
+        x = 0.0080 + 0.0022 * math.sin(math.pi * min(t * 1.4, 1.0)) - 0.0030 * max(0.0, t - 0.7) / 0.3
+        outer.append((side * (x + 0.00125), z))
+        inner.append((side * (x - 0.00125), z))
+    pts = outer + list(reversed(inner))
+    return pts if side > 0 else list(reversed(pts))
+
+
+# 耳は前縁が斜め(前が低い)
+ears = [g.loft(f"fs_ear_{s}", [g.ring_y(0.464, 0.0, ear_section(s, 0.052)), g.ring_y(0.474, 0.0, ear_section(s, 0.066)),
+                               g.ring_y(0.493, 0.0, ear_section(s, 0.066))], "steel", smooth_angle=40)
         for s in (-1, 1)]
 fs_post = g.tube_y("fs_post_tmp", 0, 0.024, 0.0013, "steel_worn", segments=10)
 fs_post.data.transform(Matrix.Translation((0, 0.479, 0.050)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Translation((0, -0.012, 0)))
 fs_post.name = "fs_post"
-for e in ears:
-    g.bevel(e, 0.0006, 2)
 g.bevel(fs_base, 0.001, 2)
 bayonet_lug = g.box("bayonet_lug", (0, 0.481, -0.014), (0.010, 0.026, 0.010), "steel", bevel=0.001)
 # ガスブロック(45度)とガスチューブ
@@ -147,7 +186,7 @@ upper_hg = g.loft("upper_handguard", [
 ], "wood", smooth_angle=60)
 # 下部ハンドガード(指のかかるふくらみ)
 lower_hg = g.loft("lower_handguard", [
-    sec(0.142, -0.004, 0.040, 0.038, 0.012, seg=3),
+    sec(0.134, -0.004, 0.040, 0.038, 0.012, seg=3),
     sec(0.152, -0.007, 0.048, 0.045, 0.015, seg=3),
     sec(0.175, -0.009, 0.053, 0.049, 0.017, seg=3),   # 手のひらが当たるふくらみ
     sec(0.205, -0.007, 0.047, 0.045, 0.015, seg=3),
@@ -205,20 +244,37 @@ mag_spine = g.loft("mag_spine", spine, "steel")
 mag_lug = g.box("mag_front_lug", (0, 0.124, -0.026), (0.012, 0.008, 0.010), "steel")
 
 # ======================= ストック(木製、下がった形) =======================
+# 付け根で一度細くくびれ(首)、肩に向かって広がる。断面は上下を丸めた楕円に近い形
 stock = g.loft("stock_body", [
-    sec(-0.122, -0.010, 0.030, 0.040, 0.008, seg=3),
-    sec(-0.170, -0.024, 0.034, 0.058, 0.010, seg=3),
-    sec(-0.250, -0.050, 0.038, 0.086, 0.012, seg=3),
-    sec(-0.358, -0.089, 0.042, 0.112, 0.012, seg=3),
+    sec(-0.118, -0.008, 0.029, 0.044, 0.010, seg=4),
+    sec(-0.140, -0.014, 0.027, 0.040, 0.011, seg=4),   # 首
+    sec(-0.175, -0.026, 0.030, 0.052, 0.012, seg=4),
+    sec(-0.250, -0.051, 0.037, 0.084, 0.015, seg=4),
+    sec(-0.330, -0.080, 0.041, 0.106, 0.016, seg=4),
+    sec(-0.358, -0.089, 0.042, 0.112, 0.016, seg=4),
 ], "wood", smooth_angle=60)
 g.bevel(stock, 0.004, 3, angle=50)
-butt_plate = g.loft("butt_plate", [sec(-0.358, -0.089, 0.043, 0.114, 0.012, seg=3), sec(-0.368, -0.089, 0.043, 0.114, 0.012, seg=3)], "steel")
+butt_plate = g.loft("butt_plate", [sec(-0.358, -0.089, 0.043, 0.114, 0.016, seg=4), sec(-0.367, -0.089, 0.043, 0.114, 0.016, seg=4)], "steel")
+g.bevel(butt_plate, 0.0015, 2)
 stock_tang = g.box("stock_tang", (0, -0.136, 0.005), (0.026, 0.030, 0.008), "steel", bevel=0.001)
-sling_loop = g.box("stock_sling_loop", (-0.0215, -0.215, -0.045), (0.003, 0.022, 0.008), "steel_worn", bevel=0.001)
+sling_loop = g.sweep_yz("rear_sling_loop", [(0, -0.122, -0.020), (0, -0.126, -0.030), (0, -0.112, -0.034), (0, -0.104, -0.030), (0, -0.106, -0.020)],
+                        RR(0.003, 0.003, 0.0012, 2), "steel_worn")
+sling_loop.data.transform(Matrix.Translation((-0.0185, 0, 0)))
 
 # ======================= 動く部品 =======================
-bolt_handle = g.tube_x("bolt_handle", (0.030, 0.090, 0.016), 0.028, 0.0045, "steel_worn")
-bolt_knob = g.tube_x("bolt_knob", (0.045, 0.090, 0.016), 0.010, 0.0075, "steel_worn", segments=20)
+# コッキングハンドル: ボルトキャリア前端から右へ約 22mm、先が少し上へ反る一体の形
+hpath = [Vector((0.012, 0.094, 0.015)), Vector((0.020, 0.094, 0.015)), Vector((0.028, 0.094, 0.016)),
+         Vector((0.033, 0.094, 0.018)), Vector((0.036, 0.094, 0.021))]
+hrings = []
+for i, hp in enumerate(hpath):
+    a, b = hpath[max(i - 1, 0)], hpath[min(i + 1, len(hpath) - 1)]
+    t = (b - a).normalized()
+    v = Vector((-t.z, 0, t.x))
+    w = 0.012 if i < len(hpath) - 1 else 0.011   # 前後の厚み
+    h = 0.008 if i < 2 else 0.010                # 先が太い
+    hrings.append(g.ring(hp, (0, 1, 0), v, RR(w, h, 0.0035, 3)))
+bolt_handle = g.loft("bolt_handle_body", hrings, "steel_bright", smooth_angle=60)
+bolt_knob = g.box("bolt_handle_root", (0.0145, 0.094, 0.015), (0.006, 0.014, 0.010), "steel_bright", bevel=0.001)
 trigger = g.prism("trigger", [(0.034, -0.030), (0.041, -0.030), (0.037, -0.044), (0.030, -0.052), (0.028, -0.049), (0.033, -0.040)],
                   0.006, "steel_worn")
 
@@ -235,7 +291,8 @@ trigger.name = "trigger"
 
 points = {
     "muzzle": (0, 0.524, BARREL_Z),
-    "ads_eye": (0, 0.121, 0.0565),     # リアサイトの切り欠き。構えたとき目がこの延長線上に来る
+    "ads_eye": (0, 0.1205, 0.0565),    # 照門の溝の上端。構えたとき目がこの延長線上に来る
+    "front_post_tip": (0, 0.479, 0.062),
     "attach_barrel": (0, 0.135, BARREL_Z),
     "attach_magazine": (0, 0.090, -0.030),
     "attach_stock": (0, -0.125, -0.005),
