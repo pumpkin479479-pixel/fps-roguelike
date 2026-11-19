@@ -1,4 +1,5 @@
-"""画像を Codex(OpenAI)と Gemini に見せて、厳しめの評価をもらう。
+"""画像を Codex(OpenAI)に見せて、厳しめの評価をもらう(--gemini を付けると Gemini にも)。
+既定は Codex だけ(2026-11-19 アルさんの方針)。
 
 使い方(アルさんの PC):
     python tools/review/review_images.py --prompt-file tools/review/prompts/gun_model.md \
@@ -158,6 +159,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt-file")
     ap.add_argument("--out")
+    ap.add_argument("--gemini", action="store_true", help="Gemini にも評価させる(既定は Codex だけ)")
     ap.add_argument("--usage", action="store_true", help="これまでの Gemini の使用量と概算金額の合計を表示する")
     ap.add_argument("images", nargs="*")
     a = ap.parse_args()
@@ -169,14 +171,18 @@ def main():
         prompt = f.read()
     images = [p for p in a.images if os.path.isfile(p)]
     print(f"[review] 画像 {len(images)} 枚")
-    gem = ask_gemini(prompt, images)
-    print("[review] Gemini 完了")
+    # 2026-11-19 アルさんの方針: モデルの評価は Codex だけで行う(Gemini は今後ゲーム部分で使う)
+    gem = ask_gemini(prompt, images) if a.gemini else None
+    if gem is not None:
+        print("[review] Gemini 完了")
     cod = ask_codex(prompt, images)
     print("[review] Codex 完了")
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         f.write(f"# 評価: {os.path.basename(a.prompt_file)}\n\n画像: {', '.join(os.path.basename(p) for p in images)}\n\n")
-        f.write("## Gemini\n\n" + gem + "\n\n## Codex\n\n" + cod + "\n")
+        if gem is not None:
+            f.write("## Gemini\n\n" + gem + "\n\n")
+        f.write("## Codex\n\n" + cod + "\n")
     print(f"[review] 保存: {a.out}")
 
 
