@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="GunType" format=3]
+
+[ext_resource type="Script" path="res://scripts/guns/gun_type.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ak47"
+display_name = "ツンドラ47"
+reference = "AK-47"
+era = 3
+fire_mode = 0
+damage = 16.0
+rpm = 600.0
+magazine = 30
+reload_time = 2.2
+pellets = 1
+spread_deg = 2.2
+bullet_speed = 75.0
+bullet_size = 0.24
+bullet_color = Color(1, 0.55, 0.25, 1)
+recoil = 1.0
+weight = 3.5
+model_path = "res://assets/models/guns/ak47.glb"
+placeholder_dims = Vector3(0.45, 0.12, 0.42)
+body_color = Color(0.18, 0.18, 0.2, 1)
+accent_color = Color(0.5, 0.27, 0.12, 1)

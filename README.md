@@ -14,4 +14,8 @@
 2. このリポジトリをクローンする
 3. Godot で `project.godot` を開く
 
-メインシーンは `main.tscn` です。
+メインシーンは試射場 `scenes/test_range.tscn` です(F5 で起動)。
+
+- M1(銃と弾幕の試作)の内容、操作、負荷テストの使い方: [docs/M1.md](docs/M1.md)
+- 弾幕の負荷テスト: `tools\bench\run_bench.bat`
+- 銃モデルの作り直し: `tools\blender\build_all.bat`
