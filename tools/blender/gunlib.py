@@ -199,8 +199,9 @@ def _apply_modifier(obj, mod):
     bpy.ops.object.modifier_apply(modifier=mod.name)
 
 
-def bevel(obj, width, segments=2, angle=35.0):
-    """角を面取りして光を拾わせる(実物の金属部品は角が少し丸い)。"""
+def bevel(obj, width, segments=2, angle=35.0, flat=False):
+    """角を面取りして光を拾わせる(実物の金属部品は角が少し丸い)。
+    flat=True は平面ばかりの部品用: 面ごとに平らに塗り、大きな面に斜めの陰が出ないようにする。"""
     m = obj.modifiers.new("bevel", "BEVEL")
     m.width = width
     m.segments = segments
@@ -208,7 +209,16 @@ def bevel(obj, width, segments=2, angle=35.0):
     m.angle_limit = math.radians(angle)
     m.harden_normals = False
     _apply_modifier(obj, m)
+    if flat:
+        obj.data.shade_flat()
+        return obj
     smooth(obj, 35.0)
+    # 面取り後の大きな平面に丸みの陰が斜めに流れないよう、面積の大きい面の向きを優先した法線にする
+    w = obj.modifiers.new("wn", "WEIGHTED_NORMAL")
+    w.mode = "FACE_AREA"
+    w.keep_sharp = True
+    w.weight = 100
+    _apply_modifier(obj, w)
     return obj
 
 

@@ -55,7 +55,7 @@ for sx in (-1, 1):
     g.cut(receiver, g.tube_x("c2", (sx * 0.0175, 0.121, -0.010), 0.010, 0.0085, "recess", segments=24))
 # 排莢口(右、長さ 100mm・高さ 20mm)。壁を抜いて中のボルトキャリアを見せる
 g.cut(receiver, g.box("c", (0.0150, 0.050, 0.015), (0.010, 0.100, 0.020), "recess"))
-g.bevel(receiver, 0.0010, 2)
+g.bevel(receiver, 0.0010, 2, flat=True)
 # 排莢口の奥に見えるボルトキャリア(少し明るい鉄)とボルト
 bolt_carrier = g.loft("bolt_carrier_visible", [sec(0.000, 0.015, 0.024, 0.018, 0.004, seg=3), sec(0.098, 0.015, 0.024, 0.018, 0.004, seg=3)], "steel_bright")
 bolt_face = g.tube_y("bolt_head", 0.098, 0.112, 0.0065, "steel", z=0.012, segments=16)
