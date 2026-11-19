@@ -6,7 +6,7 @@ extends Node3D
 signal gun_changed
 
 const MAX_SLOTS := 2
-const HIP_POS := Vector3(0.15, -0.20, -0.50)
+const HIP_POS := Vector3(0.15, -0.21, -0.42)
 ## 腰だめの向き(ラジアン): 銃口を少し内側・上へ向け、ストックは右下の画面外へ逃がす
 const HIP_ROT := Vector3(0.05, 0.07, 0.03)
 const ADS_POS := Vector3(0.0, -0.13, -0.42)

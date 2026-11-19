@@ -48,10 +48,10 @@ def sec(y, zc, w, h, r, x=0.0, seg=2):
 receiver = g.prism("receiver_body", [
     (-0.128, 0.026), (-0.128, -0.006), (-0.118, -0.030), (0.135, -0.030), (0.135, 0.026),
 ], 0.033, "steel")
-# 削り出しレシーバーの肉抜き(左右、長さ 95mm・高さ 17mm・深さ 4mm、前端は半円)
+# 削り出しレシーバーの肉抜き(左右、長さ 95mm・高さ 17mm・深さ 4mm、前端は半円、後端は斜面)
 for sx in (-1, 1):
     # 重なった形を1つにまとめてから削ると失敗するので、箱と半円を順に削る
-    g.cut(receiver, g.box("c", (sx * 0.0175, 0.0775, -0.010), (0.010, 0.087, 0.017), "recess"))
+    g.cut(receiver, g.prism("c", [(0.046, -0.0185), (0.030, -0.0015), (0.121, -0.0015), (0.121, -0.0185)], 0.010, "recess", x=sx * 0.0175))
     g.cut(receiver, g.tube_x("c2", (sx * 0.0175, 0.121, -0.010), 0.010, 0.0085, "recess", segments=24))
 # 排莢口(右、長さ 100mm・高さ 20mm)。壁を抜いて中のボルトキャリアを見せる
 g.cut(receiver, g.box("c", (0.0150, 0.050, 0.015), (0.010, 0.100, 0.020), "recess"))
@@ -62,29 +62,34 @@ bolt_face = g.tube_y("bolt_head", 0.098, 0.112, 0.0065, "steel", z=0.012, segmen
 # ダストカバー(上が丸い)と後端のボタン
 def dc_section(w, h_side, top_w, h_top):
     """ダストカバーの断面: 上面は幅 top_w の平らな面、そこから左右へ丸く落ちる。"""
+    n = 10
     pts = [(w / 2, 0.0), (w / 2, h_side)]
-    for k in range(1, 4):
-        a = math.pi / 2 * k / 4
+    for k in range(1, n):
+        a = math.pi / 2 * k / n
         pts.append((top_w / 2 + (w - top_w) / 2 * math.cos(a), h_side + (h_top - h_side) * math.sin(a)))
-    pts += [(top_w / 2, h_top), (-top_w / 2, h_top)]
-    for k in range(3, 0, -1):
-        a = math.pi / 2 * k / 4
+    pts += [(top_w / 2, h_top)]
+    for k in range(1, 4):  # 上面もわずかに丸い
+        x = top_w / 2 * (1 - 2 * k / 4)
+        pts.append((x, h_top + 0.0008 * math.sin(math.pi * k / 4)))
+    pts += [(-top_w / 2, h_top)]
+    for k in range(n - 1, 0, -1):
+        a = math.pi / 2 * k / n
         pts.append((-top_w / 2 - (w - top_w) / 2 * math.cos(a), h_side + (h_top - h_side) * math.sin(a)))
     pts += [(-w / 2, h_side), (-w / 2, 0.0)]
     return pts
 
 
 dust_cover = g.loft("dust_cover", [
-    g.ring_y(-0.134, 0.022, dc_section(0.027, 0.002, 0.012, 0.007)),
-    g.ring_y(-0.128, 0.022, dc_section(0.033, 0.004, 0.016, 0.0115)),
-    g.ring_y(-0.122, 0.022, dc_section(0.035, 0.005, 0.018, 0.020)),
-    g.ring_y(0.104, 0.022, dc_section(0.035, 0.005, 0.018, 0.020)),
-    g.ring_y(0.112, 0.022, dc_section(0.033, 0.005, 0.016, 0.018)),
+    g.ring_y(-0.134, 0.022, dc_section(0.027, 0.002, 0.007, 0.007)),
+    g.ring_y(-0.128, 0.022, dc_section(0.033, 0.004, 0.009, 0.0115)),
+    g.ring_y(-0.122, 0.022, dc_section(0.035, 0.006, 0.010, 0.020)),
+    g.ring_y(0.104, 0.022, dc_section(0.035, 0.006, 0.010, 0.020)),
+    g.ring_y(0.112, 0.022, dc_section(0.033, 0.006, 0.009, 0.018)),
 ], "steel", smooth_angle=30)
 # 後部の段(ダストカバー後端の補強の盛り上がり)
 dc_step = g.loft("dust_cover_step", [
-    g.ring_y(-0.121, 0.022, dc_section(0.0356, 0.005, 0.0186, 0.0205)),
-    g.ring_y(-0.100, 0.022, dc_section(0.0356, 0.005, 0.0186, 0.0205)),
+    g.ring_y(-0.121, 0.022, dc_section(0.0356, 0.006, 0.0106, 0.0205)),
+    g.ring_y(-0.100, 0.022, dc_section(0.0356, 0.006, 0.0106, 0.0205)),
 ], "steel", smooth_angle=30)
 dc_seams = [g.box(f"dust_cover_seam_{s}", (s * 0.0172, -0.005, 0.0225), (0.0012, 0.215, 0.0010), "recess") for s in (-1, 1)]
 spring_button = g.tube_y("spring_button", -0.138, -0.128, 0.0045, "steel_worn", z=0.030, segments=16)
@@ -123,7 +128,7 @@ axis = (gb - gt).normalized()
 fwd = Vector((0, -axis.z, axis.y))  # 軸に垂直で前向き
 grip_rings = []
 for t, w, d in [(0.0, 0.026, 0.040), (0.25, 0.030, 0.045), (0.6, 0.031, 0.044), (0.92, 0.029, 0.040), (1.0, 0.026, 0.036)]:
-    grip_rings.append(g.ring(gt + (gb - gt) * t, (1, 0, 0), fwd, RR(w, d, 0.010, 3)))
+    grip_rings.append(g.ring(gt + (gb - gt) * t, (1, 0, 0), fwd, RR(w, d, w * 0.45, 5)))
 grip = g.loft("grip", grip_rings, "bakelite", smooth_angle=60)
 g.bevel(grip, 0.004, 3, angle=50)
 # セレクターレバー(右側面の長い板)と軸
@@ -194,14 +199,13 @@ upper_hg = g.loft("upper_handguard", [
 ], "wood", smooth_angle=60)
 # 下部ハンドガード(指のかかるふくらみ)
 lower_hg = g.loft("lower_handguard", [
-    sec(0.134, -0.004, 0.040, 0.038, 0.012, seg=3),
-    sec(0.152, -0.007, 0.048, 0.045, 0.015, seg=3),
-    sec(0.175, -0.009, 0.053, 0.049, 0.017, seg=3),   # 手のひらが当たるふくらみ
-    sec(0.205, -0.007, 0.047, 0.045, 0.015, seg=3),
-    sec(0.240, -0.007, 0.046, 0.044, 0.015, seg=3),
-    sec(0.272, -0.009, 0.052, 0.048, 0.017, seg=3),
-    sec(0.290, -0.006, 0.047, 0.043, 0.014, seg=3),
-    sec(0.296, -0.004, 0.044, 0.040, 0.012, seg=3),
+    sec(0.134, -0.004, 0.040, 0.038, 0.014, seg=4),
+    sec(0.150, -0.0075, 0.047, 0.045, 0.017, seg=4),
+    sec(0.180, -0.0085, 0.051, 0.047, 0.018, seg=4),   # 手のひらが当たる横のふくらみ
+    sec(0.230, -0.0085, 0.049, 0.047, 0.018, seg=4),
+    sec(0.275, -0.0085, 0.050, 0.047, 0.018, seg=4),
+    sec(0.290, -0.0065, 0.047, 0.043, 0.016, seg=4),
+    sec(0.296, -0.004, 0.044, 0.038, 0.014, seg=4),
 ], "wood", smooth_angle=60)
 g.bevel(lower_hg, 0.004, 3, angle=50)
 g.bevel(upper_hg, 0.003, 3, angle=50)
@@ -245,7 +249,7 @@ for side in (-1, 1):
         for i in range(8):
             t = 0.12 + 0.76 * i / 7
             p, radial = mag_frame(t)
-            rr.append(g.ring(p + Vector((side * 0.0134, 0, 0)) + radial * off, (1, 0, 0), radial, RR(0.0016, 0.0045, 0.0007, 1)))
+            rr.append(g.ring(p + Vector((side * 0.0134, 0, 0)) + radial * off, (1, 0, 0), radial, RR(0.0020, 0.0045, 0.0008, 1)))
         ribs.append(g.loft(f"mag_rib_{side}_{off}", rr, "steel"))
 spine = []
 for i in range(10):
@@ -258,15 +262,15 @@ mag_lug = g.box("mag_front_lug", (0, 0.124, -0.026), (0.012, 0.008, 0.010), "ste
 # ======================= ストック(木製、下がった形) =======================
 # 付け根で一度細くくびれ(首)、肩に向かって広がる。断面は上下を丸めた楕円に近い形
 stock = g.loft("stock_body", [
-    sec(-0.118, -0.008, 0.029, 0.044, 0.010, seg=4),
-    sec(-0.140, -0.014, 0.027, 0.040, 0.011, seg=4),   # 首
-    sec(-0.175, -0.026, 0.030, 0.052, 0.012, seg=4),
-    sec(-0.250, -0.051, 0.037, 0.084, 0.015, seg=4),
-    sec(-0.330, -0.080, 0.041, 0.106, 0.016, seg=4),
-    sec(-0.358, -0.089, 0.042, 0.112, 0.016, seg=4),
+    sec(-0.118, -0.008, 0.029, 0.044, 0.012, seg=5),
+    sec(-0.140, -0.014, 0.027, 0.040, 0.012, seg=5),   # 首
+    sec(-0.175, -0.026, 0.031, 0.052, 0.014, seg=5),
+    sec(-0.250, -0.051, 0.039, 0.084, 0.018, seg=5),   # 横がふくらんだ楕円に近い断面
+    sec(-0.330, -0.080, 0.042, 0.106, 0.019, seg=5),
+    sec(-0.358, -0.089, 0.042, 0.112, 0.018, seg=5),
 ], "wood", smooth_angle=60)
 g.bevel(stock, 0.004, 3, angle=50)
-butt_plate = g.loft("butt_plate", [sec(-0.358, -0.089, 0.043, 0.114, 0.016, seg=4), sec(-0.367, -0.089, 0.043, 0.114, 0.016, seg=4)], "steel")
+butt_plate = g.loft("butt_plate", [sec(-0.358, -0.089, 0.043, 0.114, 0.018, seg=5), sec(-0.367, -0.089, 0.043, 0.114, 0.018, seg=5)], "steel")
 g.bevel(butt_plate, 0.0015, 2)
 # レシーバー後端の下でストックを受ける座金と、木部の上を後ろへ伸びるタング(幅 14mm・長さ 40mm)
 stock_tang = g.loft("stock_tang", [

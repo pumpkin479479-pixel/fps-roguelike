@@ -53,7 +53,7 @@ func _ready() -> void:
 
 
 ## 開発用: `-- --screenshot=out.png --shot-frames=120` で、指定フレーム後に画面を保存して終了する。
-## AI が見た目を確認するために使う。--fire で射撃、--aim で構えを押しっぱなしにする。
+## AI が見た目を確認するために使う(フレーム数に加えて最低 2 秒待つ)。--fire で射撃、--aim で構えを押しっぱなしにする。
 func _setup_screenshot() -> void:
 	var path := ""
 	var frames := 120
@@ -68,8 +68,12 @@ func _setup_screenshot() -> void:
 			Input.action_press.call_deferred("aim")
 	if path == "":
 		return
-	for _k in frames:
+	# 速いPCでは 120 フレームが一瞬で終わり構えの動きが途中になるので、最低 2 秒は待つ
+	var start := Time.get_ticks_msec()
+	var k := 0
+	while k < frames or Time.get_ticks_msec() - start < 2000:
 		await get_tree().process_frame
+		k += 1
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(path)
